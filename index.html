@@ -2,33 +2,6 @@
 <html lang="en">
 
 <head>
-  <!--
-  ============================================================
-  IEEE FSM STUDENT BRANCH — SINGLE PAGE WEBSITE
-  ============================================================
-  HOW TO CUSTOMIZE THIS SITE (read me first)
-
-  1) TEXT: every placeholder is marked with an EDIT comment like
-     the ones below. Search for "EDIT:" to find them all.
-
-  2) PHOTOS (members + activities): each <img> below points to a
-     file path under /assets/... that does not exist yet. That is
-     intentional — until you add a real file at that path, the
-     image will automatically fall back to a generated placeholder
-     (initials avatar for members, a pattern tile for activities).
-     Just drop a real photo at the same path/filename and it will
-     appear automatically, animations included.
-
-  3) LOGO: replace the inline SVG mark in the nav (id="logo-mark")
-     with your branch's real logo if you have one.
-
-  4) COLORS: all colors are CSS variables at the top of <style>,
-     under ":root". Change them there to restyle the whole site.
-
-  5) LINKS: social + email placeholders are in the #join and
-     footer sections — search "EDIT: link".
-  ============================================================
--->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IEEE FSM Student Branch</title>
@@ -52,6 +25,173 @@
   </script>
 
   <style>
+    /* ===================== CUSTOM CURSOR ===================== */
+    @media (hover: hover) and (pointer: fine) {
+      html {
+        cursor: none;
+      }
+
+      a,
+      button,
+      .unit-card,
+      .team-card,
+      [onclick],
+      input,
+      textarea,
+      select,
+      label {
+        cursor: none;
+      }
+
+      .cursor-dot,
+      .cursor-ring {
+        position: fixed;
+        top: 0;
+        left: 0;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 10000;
+        transform: translate(-50%, -50%);
+        will-change: transform;
+      }
+
+      .cursor-dot {
+        width: 7px;
+        height: 7px;
+        background: var(--ieee-blue-light);
+        box-shadow: 0 0 10px color-mix(in srgb, var(--ieee-blue-light) 70%, transparent);
+        transition: opacity 0.2s ease, background 0.25s ease;
+      }
+
+      .cursor-ring {
+        width: 34px;
+        height: 34px;
+        border: 1.5px solid var(--ieee-blue-light);
+        opacity: 0.55;
+        transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+          height 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 0.25s ease,
+          border-color 0.25s ease,
+          background 0.25s ease;
+      }
+
+      /* grow + fill on interactive elements */
+      body.cursor-hover .cursor-ring {
+        width: 54px;
+        height: 54px;
+        background: color-mix(in srgb, var(--ieee-blue-light) 12%, transparent);
+        border-color: var(--ieee-blue-light);
+        opacity: 0.9;
+      }
+
+      body.cursor-hover .cursor-dot {
+        opacity: 0;
+      }
+
+      /* click feedback */
+      body.cursor-active .cursor-ring {
+        width: 28px;
+        height: 28px;
+        opacity: 1;
+      }
+
+      /* fade out when leaving the window */
+      body.cursor-hidden .cursor-dot,
+      body.cursor-hidden .cursor-ring {
+        opacity: 0;
+      }
+    }
+
+    @media (hover: none),
+    (pointer: coarse) {
+
+      .cursor-dot,
+      .cursor-ring {
+        display: none;
+      }
+    }
+
+
+    /* ===================== HERO ENTRANCE ANIMATION ===================== */
+    @keyframes heroFadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(28px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .hero .hero-eyebrow,
+    .hero h1,
+    .hero .lede,
+    .hero .hero-actions,
+    .hero .hero-side {
+      opacity: 0;
+      animation: heroFadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .hero .hero-eyebrow {
+      animation-delay: 0.1s;
+    }
+
+    .hero h1 {
+      animation-delay: 0.25s;
+    }
+
+    .hero .lede {
+      animation-delay: 0.4s;
+    }
+
+    .hero .hero-actions {
+      animation-delay: 0.55s;
+    }
+
+    .hero .hero-side {
+      animation-delay: 0.7s;
+    }
+
+    /* stagger the individual stat rows inside hero-side for a nicer cascade */
+    .hero .hero-side .hero-stat-row {
+      opacity: 0;
+      animation: heroFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .hero .hero-side .hero-stat-row:nth-child(1) {
+      animation-delay: 0.8s;
+    }
+
+    .hero .hero-side .hero-stat-row:nth-child(2) {
+      animation-delay: 0.9s;
+    }
+
+    .hero .hero-side .hero-stat-row:nth-child(3) {
+      animation-delay: 1.0s;
+    }
+
+    .hero .hero-side .hero-stat-row:nth-child(4) {
+      animation-delay: 1.1s;
+    }
+
+    /* respect users who prefer less motion — site already handles this globally,
+   this just double-guards the hero specifically */
+    @media (prefers-reduced-motion: reduce) {
+
+      .hero .hero-eyebrow,
+      .hero h1,
+      .hero .lede,
+      .hero .hero-actions,
+      .hero .hero-side,
+      .hero .hero-side .hero-stat-row {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+
     /* ===================== TOKENS ===================== */
     :root {
       /* color — light mode */
@@ -383,6 +523,15 @@
       backdrop-filter: blur(14px);
       height: var(--nav-h);
       border-bottom: 1px solid rgba(17, 32, 51, 0.08);
+    }
+
+    #navIeeeLogo {
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transform-origin: center;
+    }
+
+    #navIeeeLogo:hover {
+      transform: scale(1.12);
     }
 
     .nav .container {
@@ -770,7 +919,7 @@
       width: 100%;
       aspect-ratio: 16 / 9;
       position: relative;
-      transform: translateX(-55px);
+
       display: flex;
       align-items: center;
       justify-content: center;
@@ -851,6 +1000,59 @@
       line-height: 1.3;
     }
 
+    /* ===================== SECTION DIVIDER ===================== */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 48px 0;
+      background: var(--bg);
+    }
+
+    .section-divider .divider-line {
+      width: 120px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--line) 50%, transparent);
+      position: relative;
+    }
+
+    .section-divider .divider-line::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, var(--ieee-blue-light), transparent);
+      opacity: 0;
+      animation: dividerGlow 4s ease-in-out infinite;
+    }
+
+    .section-divider .divider-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--ieee-blue-light);
+      box-shadow: 0 0 12px color-mix(in srgb, var(--ieee-blue-light) 60%, transparent);
+      flex-shrink: 0;
+    }
+
+    @keyframes dividerGlow {
+
+      0%,
+      100% {
+        opacity: 0;
+      }
+
+      50% {
+        opacity: 0.6;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .section-divider .divider-line {
+        width: 60px;
+      }
+    }
+
     /* ===================== PARTNERS ===================== */
     .partners {
       padding: 110px 0;
@@ -927,14 +1129,16 @@
     html:not([data-theme="dark"]) .tarantinoo-card img,
     html:not([data-theme="dark"]) .watc-card img,
     html:not([data-theme="dark"]) .ithouse-card img,
-    html:not([data-theme="dark"]) .funtopia-card img {
+    html:not([data-theme="dark"]) .funtopia-card img,
+    html:not([data-theme="dark"]) .castello-card img {
       filter: brightness(0);
     }
 
     html[data-theme="dark"] .tarantinoo-card img,
     html[data-theme="dark"] .watc-card img,
     html[data-theme="dark"] .ithouse-card img,
-    html[data-theme="dark"] .funtopia-card img {
+    html[data-theme="dark"] .funtopia-card img,
+    html[data-theme="dark"] .castello-card img {
       filter: none;
     }
 
@@ -2049,6 +2253,9 @@
 </head>
 
 <body>
+
+  <div class="cursor-dot" id="cursorDot"></div>
+  <div class="cursor-ring" id="cursorRing"></div>
   <div class="scroll-progress" id="scrollProgress"></div>
 
   <!-- icon sprite -->
@@ -2105,7 +2312,7 @@
     <div class="container">
 
       <img id="navIeeeLogo" alt="IEEE FSM Student Branch" src="./ieee-fsm.png"
-        style="height:60px; width:auto; margin-left : -70px; display:block; filter: none;">
+        style="height:60px; width:auto; display:block; filter: none;">
       </a>
       <div class="nav-links">
         <a href="#home">Home</a>
@@ -2189,8 +2396,8 @@
         <div class="hero-side">
           <span class="hero-side-label" style="font-size: 16px;">Branch at a glance</span>
           <!-- EDIT: replace these placeholder figures with your real numbers -->
-          <div class="hero-stat-row"><span class="label">Active members</span><span class="num">40+</span></div>
-          <div class="hero-stat-row"><span class="label">Activities run</span><span class="num">20+</span></div>
+          <div class="hero-stat-row"><span class="label">Active members</span><span class="num">50+</span></div>
+          <div class="hero-stat-row"><span class="label">Activities run</span><span class="num">25+</span></div>
           <div class="hero-stat-row"><span class="label">Units &amp; chapters</span><span class="num">02</span></div>
           <div class="hero-stat-row"><span class="label">Founded</span><span class="num">2024</span></div>
         </div>
@@ -2218,40 +2425,26 @@
           <div class="about-visual reveal">
             <!-- photo: drop a real image at assets/about/branch-photo.jpg to replace the placeholder -->
             <div class="about-photo">
-              <img src="assets/about/branch-photo.jpg" alt="IEEE FSM Student Branch"
+              <img src="./IMG_4457.jpg" alt="IEEE FSM Student Branch"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <div class="ph-label" style="display:none;">
-                <svg viewBox="0 0 24 24">
-                  <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
-                  <circle cx="12" cy="13.5" r="3.4" />
-                </svg>
-                <span>Branch photo</span>
-              </div>
             </div>
             <!-- EDIT: replace with your real numbers -->
             <div class="stat-grid">
               <div class="stat-card"><span class="num">2024</span><span class="label">Year founded</span></div>
-              <div class="stat-card"><span class="num">40+</span><span class="label">Active members</span></div>
-              <div class="stat-card"><span class="num">20+</span><span class="label">Activities run</span></div>
+              <div class="stat-card"><span class="num">50+</span><span class="label">Active members</span></div>
+              <div class="stat-card"><span class="num">25+</span><span class="label">Activities run</span></div>
               <div class="stat-card"><span class="num">02</span><span class="label">Units &amp; chapters</span></div>
             </div>
           </div>
         </div>
       </div>
     </section>
-    <section class="dark-only">
-      <div style="height: 150px; background-color: #07090F;"></div>
-    </section>
-
-    <style>
-      .dark-only {
-        display: none;
-      }
-
-      html[data-theme="dark"] .dark-only {
-        display: block;
-      }
-    </style>
+    <!-- ===================== SECTION DIVIDER ===================== -->
+    <div class="section-divider" aria-hidden="true">
+      <span class="divider-line"></span>
+      <span class="divider-dot"></span>
+      <span class="divider-line"></span>
+    </div>
     <!-- ===================== PARTNERS ===================== -->
     <section class="partners" id="partners">
       <div class="container">
@@ -2312,9 +2505,25 @@
             </div>
             <h3>IT House</h3>
           </article>
+
+          <article class="partner-card reveal castello-card">
+            <div class="partner-logo">
+              <img src="./castello.png" alt="Castello Partner Logo"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <span class="partner-fallback">Castello</span>
+            </div>
+            <h3>Castello</h3>
+          </article>
         </div>
       </div>
     </section>
+
+    <!-- ===================== SECTION DIVIDER ===================== -->
+    <div class="section-divider" aria-hidden="true">
+      <span class="divider-line"></span>
+      <span class="divider-dot"></span>
+      <span class="divider-line"></span>
+    </div>
 
     <!-- ===================== ACTIVITIES ===================== -->
     <section class="activities" id="activities">
@@ -2433,6 +2642,13 @@
       </div>
     </section>
 
+    <!-- ===================== SECTION DIVIDER ===================== -->
+    <div class="section-divider" aria-hidden="true">
+      <span class="divider-line"></span>
+      <span class="divider-dot"></span>
+      <span class="divider-line"></span>
+    </div>
+
     <!-- ===================== UNITS ===================== -->
     <section class="units" id="units">
       <div class="container">
@@ -2475,14 +2691,19 @@
       </div>
     </aside>
 
+    <!-- ===================== SECTION DIVIDER ===================== -->
+    <div class="section-divider" aria-hidden="true">
+      <span class="divider-line"></span>
+      <span class="divider-dot"></span>
+      <span class="divider-line"></span>
+    </div>
+
     <!-- ===================== TEAM ===================== -->
     <section class="team" id="team">
       <div class="container">
         <div class="section-head reveal">
           <span class="eyebrow">The people behind it</span>
           <h2>Our team</h2>
-          <p>Drop a photo at the matching file path in <code>/assets/team/</code> and it replaces the placeholder
-            automatically. <!-- EDIT: update names/roles, add or remove cards --></p>
         </div>
         <div class="team-grid">
           <!-- EDIT: duplicate a .team-card block per member. Initials in data-initials are used as the placeholder avatar until a real photo is added. -->
@@ -2808,6 +3029,115 @@
         if (e.key === 'Escape') closePanel();
       });
     })();
+
+
+    (function () {
+      if (window.matchMedia('(hover: none), (pointer: coarse)').matches) return;
+
+      const dot = document.getElementById('cursorDot');
+      const ring = document.getElementById('cursorRing');
+      const body = document.body;
+
+      let mouseX = 0, mouseY = 0;
+      let ringX = 0, ringY = 0;
+
+      document.addEventListener('mousemove', e => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        dot.style.left = mouseX + 'px';
+        dot.style.top = mouseY + 'px';
+        body.classList.remove('cursor-hidden');
+      });
+
+      document.addEventListener('mouseleave', () => body.classList.add('cursor-hidden'));
+      document.addEventListener('mouseenter', () => body.classList.remove('cursor-hidden'));
+
+      // eased trailing ring
+      function animateRing() {
+        ringX += (mouseX - ringX) * 0.18;
+        ringY += (mouseY - ringY) * 0.18;
+        ring.style.left = ringX + 'px';
+        ring.style.top = ringY + 'px';
+        requestAnimationFrame(animateRing);
+      }
+      animateRing();
+
+      document.addEventListener('mousedown', () => body.classList.add('cursor-active'));
+      document.addEventListener('mouseup', () => body.classList.remove('cursor-active'));
+
+      const interactiveSelector = 'a, button, .unit-card, .team-card, input, textarea, select, [onclick]';
+      document.querySelectorAll(interactiveSelector).forEach(el => {
+        el.addEventListener('mouseenter', () => body.classList.add('cursor-hover'));
+        el.addEventListener('mouseleave', () => body.classList.remove('cursor-hover'));
+      });
+    })();
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+      try {
+        const statEls = document.querySelectorAll('.hero-stat-row .num, .stat-card .num');
+        if (!statEls.length) {
+          console.warn('Count-up: no .num elements found — check selector/markup.');
+          return;
+        }
+
+        function animateCount(el) {
+          const raw = el.dataset.finalText || el.textContent.trim();
+          const match = raw.match(/^(\D*)(\d+)(\D*)$/);
+          if (!match) return;
+
+          const [, prefix, numStr, suffix] = match;
+          const target = parseInt(numStr, 10);
+          const digits = numStr.length;
+          const duration = 1900;
+          let startTime = null;
+
+          function step(ts) {
+            if (!startTime) startTime = ts;
+            const progress = Math.min((ts - startTime) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 4);
+            const current = Math.round(eased * target);
+            el.textContent = prefix + String(current).padStart(digits, '0') + suffix;
+            if (progress < 1) requestAnimationFrame(step);
+            else el.textContent = raw;
+          }
+          requestAnimationFrame(step);
+        }
+
+        // zero out and store the real value for later
+        statEls.forEach(el => {
+          const raw = el.textContent.trim();
+          const match = raw.match(/^(\D*)(\d+)(\D*)$/);
+          if (match) {
+            const [, prefix, numStr, suffix] = match;
+            el.dataset.finalText = raw;
+            el.textContent = prefix + '0'.padStart(numStr.length, '0') + suffix;
+          }
+        });
+
+        if ('IntersectionObserver' in window) {
+          const statObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                animateCount(entry.target);
+                statObserver.unobserve(entry.target);
+              }
+            });
+          }, { threshold: 0.3 });
+
+          statEls.forEach(el => statObserver.observe(el));
+        } else {
+          // no IntersectionObserver support — just animate immediately
+          statEls.forEach(animateCount);
+        }
+      } catch (err) {
+        console.error('Count-up animation failed:', err);
+        // fallback: restore original numbers so nothing stays stuck at 0
+        document.querySelectorAll('.hero-stat-row .num, .stat-card .num').forEach(el => {
+          if (el.dataset.finalText) el.textContent = el.dataset.finalText;
+        });
+      }
+    });
   </script>
 </body>
 
