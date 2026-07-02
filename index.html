@@ -125,6 +125,12 @@
       }
     }
 
+    .hero {
+      min-height: 100vh;
+      min-height: 100dvh;
+      /* iOS/Android: accounts for shrinking toolbar, prevents jump */
+    }
+
     .hero .hero-eyebrow,
     .hero h1,
     .hero .lede,
@@ -411,6 +417,8 @@
 
     /* nav brand image */
     .brand img {
+      height: 48px;
+      width: auto;
       transition: opacity .2s ease;
     }
 
@@ -1398,6 +1406,8 @@
       top: 0;
       right: 0;
       height: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
       width: min(420px, 100%);
       background: var(--surface);
       border-left: 1px solid var(--line);
@@ -1408,6 +1418,8 @@
       display: flex;
       flex-direction: column;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      /* smooth momentum scroll on iOS */
     }
 
     .unit-panel.active {
@@ -1423,8 +1435,8 @@
 
     .unit-panel-close {
       position: absolute;
-      top: 20px;
-      right: 20px;
+      top: max(20px, env(safe-area-inset-top));
+      right: max(20px, env(safe-area-inset-right));
       width: 40px;
       height: 40px;
       border-radius: 50%;
@@ -1447,7 +1459,7 @@
     }
 
     .unit-panel-body {
-      padding: 60px 36px 40px;
+      padding: 60px 36px calc(40px + env(safe-area-inset-bottom));
     }
 
     .unit-panel-logo {
@@ -1685,6 +1697,193 @@
 
     .team-card:hover::before {
       border-color: rgba(96, 184, 238, 0.45);
+    }
+
+    /* ===================== GALLERY ===================== */
+    .gallery {
+      padding: 110px 0;
+      background: #F7FAFD;
+    }
+
+    html[data-theme="dark"] .gallery {
+      background: var(--navy-deep);
+    }
+
+    .gallery-grid {
+      margin-top: 44px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-auto-rows: 130px;
+      gap: 16px;
+    }
+
+    .gallery-item {
+      position: relative;
+      grid-row: span var(--span, 1);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      background: var(--surface2);
+      border: 1px solid var(--line);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .gallery-item:hover img {
+      transform: scale(1.08);
+    }
+
+    .gallery-fallback {
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(96, 184, 238, 0.14), transparent 55%),
+        var(--surface2);
+    }
+
+    .gallery-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
+      padding: 16px;
+      background: linear-gradient(to top, rgba(0, 24, 41, 0.75) 5%, transparent 65%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .gallery-item:hover .gallery-overlay {
+      opacity: 1;
+    }
+
+    .gallery-caption {
+      color: #fff;
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    /* ── lightbox ── */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 14, 0.94);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .lightbox.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .lightbox-img {
+      max-width: min(88vw, 1100px);
+      max-height: 82vh;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      transform: scale(0.96);
+      transition: transform 0.3s ease;
+    }
+
+    .lightbox.active .lightbox-img {
+      transform: scale(1);
+    }
+
+    .lightbox-caption {
+      position: absolute;
+      bottom: 32px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: #fff;
+      font-size: 14px;
+      opacity: 0.85;
+    }
+
+    .lightbox-close,
+    .lightbox-nav {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .lightbox-close {
+      top: 24px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      font-size: 22px;
+    }
+
+    .lightbox-nav {
+      top: 50%;
+      transform: translateY(-50%);
+      width: 52px;
+      height: 52px;
+      font-size: 28px;
+    }
+
+    .lightbox-prev {
+      left: 24px;
+    }
+
+    .lightbox-next {
+      right: 24px;
+    }
+
+    .lightbox-close:hover,
+    .lightbox-nav:hover {
+      background: var(--ieee-blue-light);
+      transform: translateY(-50%) scale(1.08);
+    }
+
+    .lightbox-close:hover {
+      transform: scale(1.08);
+    }
+
+    @media (max-width: 767px) {
+      .gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-auto-rows: 150px;
+      }
+
+      .lightbox-nav {
+        width: 42px;
+        height: 42px;
+        font-size: 22px;
+      }
+
+      .lightbox-prev {
+        left: 10px;
+      }
+
+      .lightbox-next {
+        right: 10px;
+      }
     }
 
     /* ===================== JOIN ===================== */
@@ -2083,17 +2282,25 @@
         display: none;
       }
 
+      .navIeeeLogo {
+        height: 30px;
+        width: auto;
+      }
+
       .hamburger {
         display: flex;
       }
 
       /* hero: stack columns */
       .hero-grid {
+        width: 120%;
+        margin-left: 0;
         grid-template-columns: 1fr;
         gap: 44px;
       }
 
       .hero-side {
+        width: 80%;
         margin-top: 0;
       }
 
@@ -2161,7 +2368,15 @@
     /* ── mobile (up to 767px) ── */
     @media (max-width: 767px) {
       :root {
-        --nav-h: 66px;
+        --nav-h: 90px;
+      }
+
+      .brand img {
+        height: 38px;
+      }
+
+      .navIeeeLogo {
+        height: 30px;
       }
 
       .container {
@@ -2339,6 +2554,7 @@
         <a href="#activities">Activities</a>
         <a href="#units">Units</a>
         <a href="#team">Team</a>
+        <a href="#gallery">Gallery</a>
         <a href="#join">Contact</a>
       </div>
       <div class="nav-cta">
@@ -2375,6 +2591,7 @@
       <a href="#activities">Activities</a>
       <a href="#units">Units</a>
       <a href="#team">Team</a>
+      <a href="#gallery">Gallery</a>
       <a href="#join">Contact</a>
     </nav>
   </div>
@@ -2401,7 +2618,6 @@
         <div style="width: 80%;">
           <span class="eyebrow hero-eyebrow">IEEE FSM Student Branch · Faculty of Sciences of Monastir</span>
           <h1>Empowering Connections.<br>Building <span>Community.</span></h1>
-          <!-- EDIT: replace with your branch's real description -->
           <p class="lede">We're a community of engineering and computer science students at FSM, building hands-on
             experience through workshops, competitions, talks, and projects — backed by the global IEEE network.</p>
           <div class="hero-actions">
@@ -2817,6 +3033,89 @@
       </div>
     </section>
 
+    <!-- ===================== SECTION DIVIDER ===================== -->
+    <div class="section-divider" aria-hidden="true">
+      <span class="divider-line"></span>
+      <span class="divider-dot"></span>
+      <span class="divider-line"></span>
+    </div>
+    <!-- ===================== GALLERY ===================== -->
+    <section class="gallery" id="gallery">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Moments from the branch</span>
+          <h2>Gallery</h2>
+          <p>Highlights from our workshops, socials, and events. <!-- EDIT: update description --></p>
+        </div>
+
+        <div class="gallery-grid">
+          <!-- EDIT: duplicate a .gallery-item per photo. style="--span:2" makes a taller tile for masonry variety -->
+          <div class="gallery-item reveal" style="--span:2;">
+            <img src="assets/gallery/photo-1.jpg" alt="Workshop session"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="gallery-fallback" style="display:none;">Photo</div>
+            <div class="gallery-overlay">
+              <span class="gallery-caption">Workshop Session</span>
+            </div>
+          </div>
+
+          <div class="gallery-item reveal">
+            <img src="assets/gallery/photo-2.jpg" alt="Team social"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="gallery-fallback" style="display:none;">Photo</div>
+            <div class="gallery-overlay">
+              <span class="gallery-caption">Team Social</span>
+            </div>
+          </div>
+
+          <div class="gallery-item reveal">
+            <img src="assets/gallery/photo-3.jpg" alt="Guest talk"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="gallery-fallback" style="display:none;">Photo</div>
+            <div class="gallery-overlay">
+              <span class="gallery-caption">Guest Talk</span>
+            </div>
+          </div>
+
+          <div class="gallery-item reveal" style="--span:2;">
+            <img src="assets/gallery/photo-4.jpg" alt="Hackathon"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="gallery-fallback" style="display:none;">Photo</div>
+            <div class="gallery-overlay">
+              <span class="gallery-caption">Hackathon Weekend</span>
+            </div>
+          </div>
+
+          <div class="gallery-item reveal">
+            <img src="assets/gallery/photo-5.jpg" alt="Award ceremony"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="gallery-fallback" style="display:none;">Photo</div>
+            <div class="gallery-overlay">
+              <span class="gallery-caption">Award Ceremony</span>
+            </div>
+          </div>
+
+          <div class="gallery-item reveal">
+            <img src="assets/gallery/photo-6.jpg" alt="Coding bootcamp"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="gallery-fallback" style="display:none;">Photo</div>
+            <div class="gallery-overlay">
+              <span class="gallery-caption">Coding Bootcamp</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- lightbox -->
+    <div class="lightbox" id="lightbox">
+      <button class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
+      <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous">&#8249;</button>
+      <img class="lightbox-img" id="lightboxImg" src="" alt="">
+      <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next">&#8250;</button>
+      <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+
     <!-- ===================== JOIN / CONTACT ===================== -->
     <section class="join" id="join">
       <div class="container">
@@ -3190,6 +3489,69 @@
         });
       }
     });
+
+
+    (function () {
+      const items = Array.from(document.querySelectorAll('.gallery-item'));
+      if (!items.length) return;
+
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImg = document.getElementById('lightboxImg');
+      const lightboxCaption = document.getElementById('lightboxCaption');
+      const closeBtn = document.getElementById('lightboxClose');
+      const prevBtn = document.getElementById('lightboxPrev');
+      const nextBtn = document.getElementById('lightboxNext');
+
+      let currentIndex = 0;
+
+      function openLightbox(index) {
+        currentIndex = index;
+        const item = items[currentIndex];
+        const img = item.querySelector('img');
+        const caption = item.querySelector('.gallery-caption');
+
+        lightboxImg.src = img.src;
+        lightboxImg.alt = img.alt;
+        lightboxCaption.textContent = caption ? caption.textContent : '';
+
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+
+      function showNext() {
+        currentIndex = (currentIndex + 1) % items.length;
+        openLightbox(currentIndex);
+      }
+
+      function showPrev() {
+        currentIndex = (currentIndex - 1 + items.length) % items.length;
+        openLightbox(currentIndex);
+      }
+
+      items.forEach((item, index) => {
+        item.addEventListener('click', () => openLightbox(index));
+      });
+
+      closeBtn.addEventListener('click', closeLightbox);
+      nextBtn.addEventListener('click', showNext);
+      prevBtn.addEventListener('click', showPrev);
+
+      lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) closeLightbox();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (!lightbox.classList.contains('active')) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowRight') showNext();
+        if (e.key === 'ArrowLeft') showPrev();
+      });
+    })();
   </script>
 </body>
 
