@@ -1181,19 +1181,21 @@
     .timeline::before {
       content: "";
       position: absolute;
-      left: 130px;
+      left: 50%;
       top: 6px;
       bottom: 6px;
       width: 1px;
+      transform: translateX(-50%);
       background: linear-gradient(var(--ieee-blue), rgba(17, 32, 51, 0.05));
     }
 
     .tl-item {
       display: grid;
-      grid-template-columns: 110px 40px 1fr;
-      gap: 0 24px;
-      align-items: flex-start;
-      padding-bottom: 56px;
+      grid-template-columns: 1fr 60px 1fr;
+      grid-template-rows: auto auto;
+      column-gap: 25px;
+      row-gap: 14px;
+      padding-bottom: 30px;
       opacity: 0;
       transform: translateY(28px);
       transition: opacity .6s ease, transform .6s ease;
@@ -1208,25 +1210,65 @@
       padding-bottom: 0;
     }
 
+    /* stagger: push even items down as a whole unit so the zigzag still reads,
+   while keeping date + node aligned within each item's own row 1 */
+    .tl-item:nth-child(even) {
+      margin-top: 56px;
+    }
+
+    /* row 1: date sits level with the node, on whichever side this item belongs to */
     .tl-date {
+      grid-row: 1;
+      align-self: center;
       font-family: var(--font-mono);
       font-size: 15px;
       color: #6B8499;
-      padding-top: 22px;
-      text-align: right;
-      margin-right: 5px;
     }
 
     .tl-node-col {
+      grid-row: 1;
+      grid-column: 2;
       display: flex;
       justify-content: center;
-      padding-top: 18px;
+      align-self: center;
     }
 
+    /* row 2: the card sits below, on the same side as its date */
+    .tl-card {
+      grid-row: 2;
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 26px;
+      background: var(--surface);
+      border: 1px solid rgba(17, 32, 51, 0.08);
+      border-radius: var(--radius);
+      padding: 26px;
+      text-align: left;
+      transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+    }
+
+    /* odd items: left side */
+    .tl-item:nth-child(odd) .tl-date {
+      grid-column: 1;
+      text-align: right;
+    }
+
+    .tl-item:nth-child(odd) .tl-card {
+      grid-column: 1;
+      margin-left: auto;
+    }
+
+    /* even items: right side */
+    .tl-item:nth-child(even) .tl-date {
+      grid-column: 3;
+      text-align: left;
+    }
+
+    .tl-item:nth-child(even) .tl-card {
+      grid-column: 3;
+    }
 
     .tl-node {
-      margin-left: -47px;
-      margin-top: 10px;
       width: 12px;
       height: 12px;
       border-radius: 50%;
@@ -1245,21 +1287,6 @@
         0 0 6px rgba(96, 184, 238, 0.9),
         0 0 18px rgba(96, 184, 238, 0.5),
         0 0 36px rgba(96, 184, 238, 0.2);
-    }
-
-    .tl-item.in-view .tl-node {
-      animation: node-zoom 1.25s ease-in-out infinite, charge-shimmer 1.4s linear infinite;
-    }
-
-    .tl-card {
-      display: grid;
-      grid-template-columns: 1fr 220px;
-      gap: 26px;
-      background: var(--surface);
-      border: 1px solid rgba(17, 32, 51, 0.08);
-      border-radius: var(--radius);
-      padding: 26px;
-      transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
     }
 
     .tl-card:hover {
@@ -2315,20 +2342,23 @@
         gap: 44px;
       }
 
-      /* timeline: collapse date+node columns */
       .timeline::before {
         display: none;
       }
 
       .tl-item {
         grid-template-columns: 1fr;
-        gap: 12px;
+        grid-template-rows: auto auto;
+        row-gap: 8px;
         padding-bottom: 36px;
+        margin-top: 0 !important;
+        /* cancel the desktop zigzag stagger */
       }
 
-      .tl-date {
+      .tl-item:nth-child(odd) .tl-date,
+      .tl-item:nth-child(even) .tl-date {
+        grid-column: 1;
         text-align: left;
-        padding-top: 0;
         font-size: 12px;
       }
 
@@ -2336,10 +2366,12 @@
         display: none;
       }
 
-      .tl-card {
+      .tl-item:nth-child(odd) .tl-card,
+      .tl-item:nth-child(even) .tl-card {
+        grid-column: 1;
+        margin-left: 0;
         grid-template-columns: 1fr;
         gap: 18px;
-        margin-top: 0;
       }
 
       .tl-thumb {
@@ -2769,9 +2801,7 @@
             <!-- EDIT: replace each entry below with your real activities, dates, and photos -->
           </p>
         </div>
-
         <div class="timeline">
-          <!-- EDIT: duplicate a .tl-item block for each activity; keep newest at top -->
           <div class="tl-item">
             <div class="tl-date">March 2026</div>
             <div class="tl-node-col">
@@ -2792,19 +2822,19 @@
               </div>
             </div>
           </div>
-
           <div class="tl-item">
-            <div class="tl-date">January 2026</div>
+            <div class="tl-date">March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
             </div>
             <div class="tl-card">
               <div>
-                <h3>IEEEXtreme 24h Hackathon</h3>
-                <p>Branch members competed as teams in IEEE's global 24-hour competitive programming event.</p>
+                <h3>Workshop: Intro to Embedded Systems</h3>
+                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
+                  Automation chapter.</p>
               </div>
               <div class="tl-thumb">
-                <img src="assets/activities/ieeextreme.jpg" alt="IEEEXtreme hackathon"
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -2812,19 +2842,19 @@
               </div>
             </div>
           </div>
-
           <div class="tl-item">
-            <div class="tl-date">November 2025</div>
+            <div class="tl-date">March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
             </div>
             <div class="tl-card">
               <div>
-                <h3>Tech Talk: Careers in AI</h3>
-                <p>A guest speaker session on breaking into machine learning roles, followed by an open Q&amp;A.</p>
+                <h3>Workshop: Intro to Embedded Systems</h3>
+                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
+                  Automation chapter.</p>
               </div>
               <div class="tl-thumb">
-                <img src="assets/activities/ai-talk.jpg" alt="AI careers talk"
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -2832,19 +2862,19 @@
               </div>
             </div>
           </div>
-
           <div class="tl-item">
-            <div class="tl-date">October 2025</div>
+            <div class="tl-date">March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
             </div>
             <div class="tl-card">
               <div>
-                <h3>Welcome Day &amp; Membership Drive</h3>
-                <p>Orientation event introducing new students to the branch, its units, and how to get involved.</p>
+                <h3>Workshop: Intro to Embedded Systems</h3>
+                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
+                  Automation chapter.</p>
               </div>
               <div class="tl-thumb">
-                <img src="assets/activities/welcome-day.jpg" alt="Welcome day"
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -2852,19 +2882,99 @@
               </div>
             </div>
           </div>
-
           <div class="tl-item">
-            <div class="tl-date">May 2025</div>
+            <div class="tl-date">March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
             </div>
             <div class="tl-card">
               <div>
-                <h3>Soldering &amp; PCB Design Bootcamp</h3>
-                <p>A two-day bootcamp covering schematic design fundamentals and hands-on soldering practice.</p>
+                <h3>Workshop: Intro to Embedded Systems</h3>
+                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
+                  Automation chapter.</p>
               </div>
               <div class="tl-thumb">
-                <img src="assets/activities/pcb-bootcamp.jpg" alt="PCB bootcamp"
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">March 2026</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>Workshop: Intro to Embedded Systems</h3>
+                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
+                  Automation chapter.</p>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">March 2026</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>Workshop: Intro to Embedded Systems</h3>
+                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
+                  Automation chapter.</p>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">March 2026</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>Workshop: Intro to Embedded Systems</h3>
+                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
+                  Automation chapter.</p>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">March 2026</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>Workshop: Intro to Embedded Systems</h3>
+                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
+                  Automation chapter.</p>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -2940,7 +3050,6 @@
           <h2>Our team</h2>
         </div>
         <div class="team-grid">
-          <!-- EDIT: duplicate a .team-card block per member. Initials in data-initials are used as the placeholder avatar until a real photo is added. -->
           <div class="team-card">
             <div class="team-photo">
               <img src="assets/team/chair.jpg" alt="Branch Chair"
