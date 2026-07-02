@@ -441,6 +441,24 @@
       transition: width .08s linear;
     }
 
+    /* ===================== ACTIVE NAV LINK ===================== */
+    .nav-links a {
+      transition: color 0.25s ease;
+    }
+
+    .nav-links a.active-link {
+      color: var(--accent);
+    }
+
+    .nav-links a.active-link::after {
+      transform: scaleX(1);
+    }
+
+    /* keep the same underline behavior on mobile menu too, optional but consistent */
+    .mobile-menu nav a.active-link {
+      color: var(--accent);
+    }
+
     /* ── charging progress bar ── */
     .scroll-progress {
       position: fixed;
@@ -1750,15 +1768,15 @@
     }
 
     .social-btn {
-      width: 42px;
-      height: 42px;
+      width: 52px;
+      height: 52px;
       border-radius: 90%;
-      border: 1.5px solid rgba(2, 95, 152, 0.2);
+      border: 2px solid rgba(2, 95, 152, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 14px;
       color: var(--text-on-dark-muted);
       transition: border-color .25s ease, color .25s ease, transform .25s ease;
     }
@@ -2831,7 +2849,8 @@
                 <i class="fab fa-linkedin-in"></i>
               </a>
 
-              <a href="https://www.instagram.com/ieeefsm.sb/" class="social-btn" target="_blank" aria-label="Instagram">
+              <a href="https://www.instagram.com/ieee_fsm_student_branch/" class="social-btn" target="_blank"
+                aria-label="Instagram">
                 <i class="fab fa-instagram"></i>
               </a>
 
@@ -2923,6 +2942,39 @@
     window.addEventListener('scroll', () => {
       nav.classList.toggle('scrolled', window.scrollY > 10);
     }, { passive: true });
+
+    // ---------- active nav link on scroll ----------
+    (function () {
+      const sections = document.querySelectorAll('main section[id], header.hero[id]');
+      const navLinks = document.querySelectorAll('.nav-links a, .mobile-menu nav a');
+
+      if (!sections.length || !navLinks.length) return;
+
+      function setActiveLink(id) {
+        navLinks.forEach(link => {
+          const isMatch = link.getAttribute('href') === `#${id}`;
+          link.classList.toggle('active-link', isMatch);
+        });
+      }
+
+      const navObserver = new IntersectionObserver((entries) => {
+        // pick the entry that's most visible / closest to the top of the viewport
+        const visible = entries
+          .filter(e => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+
+        if (visible.length > 0) {
+          setActiveLink(visible[0].target.id);
+        }
+      }, {
+        // triggers when a section occupies the middle band of the viewport,
+        // so the link changes right as the section becomes the "main" one on screen
+        rootMargin: '-40% 0px -50% 0px',
+        threshold: [0, 0.25, 0.5, 0.75, 1]
+      });
+
+      sections.forEach(section => navObserver.observe(section));
+    })();
 
     // ---------- mobile menu ----------
     const openBtn = document.getElementById('openMenu');
