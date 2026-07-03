@@ -877,7 +877,7 @@
 
     @keyframes dash-flow {
       to {
-        stroke-dashoffset: -1000;
+        stroke-dashoffset: var(--dash-loop, -1000);
       }
     }
 
@@ -2633,15 +2633,15 @@
     <div class="hero-signal" aria-hidden="true">
       <svg viewBox="0 0 1200 700" preserveAspectRatio="none">
         <path d="M-80,390 L110,390 L160,300 L210,470 L290,390 L1280,390" fill="none" stroke="#00629B" stroke-width="2"
-          opacity="0.32" stroke-dasharray="10 16" style="animation: dash-flow 16s linear infinite;" />
+          opacity="0.32" stroke-dasharray="10 16" style="--dash-loop: -1088; animation: dash-flow 16s linear infinite;" />
         <path d="M-40,505 L220,505 L300,575 L360,435 L450,505 L1260,505" fill="none" stroke="#2E8FC2" stroke-width="1.5"
-          opacity="0.28" stroke-dasharray="5 10" style="animation: dash-flow 11s linear infinite reverse;" />
+          opacity="0.28" stroke-dasharray="5 10" style="--dash-loop: -1005; animation: dash-flow 11s linear infinite reverse;" />
         <path d="M-100,255 L420,255 L470,205 L530,300 L610,255 L1320,255" fill="none" stroke="#2E8FC2"
-          stroke-width="1.5" opacity="0.22" stroke-dasharray="3 14" style="animation: dash-flow 20s linear infinite;" />
-        <path d="M-60,170 L260,170 L320,230 L390,150 L470,170 L1240,170" fill="none" stroke="#A8D8F0" stroke-width="1.2"
-          opacity="0.18" stroke-dasharray="2 18" style="animation: dash-flow 24s linear infinite reverse;" />
-        <path d="M-90,610 L180,610 L250,560 L330,640 L410,610 L1310,610" fill="none" stroke="#60B8EE" stroke-width="1.2"
-          opacity="0.16" stroke-dasharray="8 18" style="animation: dash-flow 19s linear infinite;" />
+          stroke-width="1.5" opacity="0.22" stroke-dasharray="3 14" style="--dash-loop: -1003; animation: dash-flow 20s linear infinite;" />
+        <path d="M-60,170 L260,170 L320,230 L390,150 L470,170 L1240,170" fill="none" stroke="#A8D8F0" stroke-width="1.3"
+          opacity="0.18" stroke-dasharray="2 18" style="--dash-loop: -1000; animation: dash-flow 24s linear infinite reverse;" />
+        <path d="M-90,610 L180,610 L250,560 L330,640 L410,610 L1310,610" fill="none" stroke="#60B8EE" stroke-width="1.3"
+          opacity="0.16" stroke-dasharray="8 18" style="--dash-loop: -988; animation: dash-flow 19s linear infinite;" />
       </svg>
     </div>
     <div class="container"
