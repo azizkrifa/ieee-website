@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IEEE FSM Student Branch</title>
-  <link rel="icon" type="image/svg" href="./ieee-fsm-white.svg">
+  <link rel="icon" type="image/svg" href="Logos/ieee-fsm-white.svg">
   <meta name="description"
     content="IEEE FSM Student Branch — activities, chapters, affinity groups and members at the Faculty of Sciences of Monastir.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1342,6 +1342,53 @@
       height: 30px;
     }
 
+    /* ===================== TIMELINE "SEE MORE" LINK ===================== */
+    .tl-more {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--ieee-blue-light);
+      text-decoration: none;
+    }
+
+    .tl-more-arrow {
+      display: inline-block;
+      transition: transform 0.25s ease;
+    }
+
+    .tl-more:hover .tl-more-arrow {
+      transform: translateX(4px);
+    }
+
+    .tl-more::after {
+      content: "";
+      position: absolute;
+    }
+
+    /* underline that grows from left on hover, matching your nav-link style */
+    .tl-more {
+      position: relative;
+      padding-bottom: 2px;
+    }
+
+    .tl-more::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 100%;
+      bottom: 0;
+      height: 1.5px;
+      background: var(--ieee-blue-light);
+      transition: right 0.25s ease;
+    }
+
+    .tl-more:hover::before {
+      right: 0;
+    }
+
     /* ===================== UNITS ===================== */
     .units {
       padding: 110px 0;
@@ -1489,21 +1536,11 @@
       padding: 60px 36px calc(40px + env(safe-area-inset-bottom));
     }
 
-    .unit-panel-logo {
-      width: 96px;
-      height: 96px;
-      border-radius: 20px;
-      background: color-mix(in srgb, var(--unit-color, var(--ieee-blue-light)) 14%, var(--surface2));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
-      overflow: hidden;
-    }
 
     .unit-panel-logo img {
-      max-width: 70%;
-      max-height: 70%;
+      width: 50%;
+      height: auto;
+      padding-bottom: 20px;
       object-fit: contain;
     }
 
@@ -2807,18 +2844,163 @@
         </div>
         <div class="timeline">
           <div class="tl-item">
-            <div class="tl-date">March 2026</div>
+            <div class="tl-date">October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
             </div>
             <div class="tl-card">
               <div>
-                <h3>Workshop: Intro to Embedded Systems</h3>
-                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
-                  Automation chapter.</p>
+                <h3>Integration Day</h3>
+                <p>A welcoming event introducing new members to IEEE, its activities, and the student community.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DQHhIK7DA1x/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
               </div>
               <div class="tl-thumb">
                 <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">October 2025</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>Workshop: Time Management</h3>
+                <p>Learn effective time management strategies to balance your academic and extracurricular commitments.
+                </p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DQzPSg0jEm8/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">November 2025</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>Team Building: Flamingo Golf Course</h3>
+                <p>Join us for a fun-filled day of team building activities at the Flamingo Golf Course!</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DRudXfGjILy/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/team-building.jpg" alt="Team building event"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">December 2025</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>Workshop: Linkedin & Cv Creation</h3>
+                <p>Learn how to create a professional LinkedIn profile and CV that will help you stand out to potential
+                  employers.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DSmbzHPjHuf/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/linkedin-cv-workshop.jpg" alt="LinkedIn and CV creation workshop"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">January 2026</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>Team Building: Tag's Monastir</h3>
+                <p>Join us for a fun-filled day of team building activities at Tag's Monastir!</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DT0pFKfDNkf/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/team-building.jpg" alt="Team building event"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">January 2026</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>Tunihack 11.0</h3>
+                <p>hackathon held at ENSI where participants developed innovative solutions and enhanced their technical
+                  skills.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DUTGO2EDOUu/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
+                    <use href="#i-camera" />
+                  </svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">February 2026</div>
+            <div class="tl-node-col">
+              <div class="tl-node"></div>
+            </div>
+            <div class="tl-card">
+              <div>
+                <h3>WEHACK 0.0</h3>
+                <p>The first hackathon organized at FSM by our IEEE Student Branch, bringing participants together to
+                  build innovative technology projects.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DVGJ2ODjHUW/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
+              </div>
+              <div class="tl-thumb">
+                <img src="assets/activities/wehack.jpg" alt="WEHACK 0.0"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -2833,12 +3015,16 @@
             </div>
             <div class="tl-card">
               <div>
-                <h3>Workshop: Intro to Embedded Systems</h3>
-                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
-                  Automation chapter.</p>
+                <h3>FastIEEEng 2.0</h3>
+                <p>A social gathering organized in collaboration with IEEE Polytech Monastir to celebrate Ramadan and
+                  strengthen connections between members.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DVvqeDRDAgI/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
               </div>
               <div class="tl-thumb">
-                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                <img src="assets/activities/fastieeeeng.jpg" alt="FastIEEEng 2.0"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -2853,12 +3039,16 @@
             </div>
             <div class="tl-card">
               <div>
-                <h3>Workshop: Intro to Embedded Systems</h3>
-                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
-                  Automation chapter.</p>
+                <h3>IEEE Tajmaana 3.0</h3>
+                <p>A major event held at Polytechnique Sousse that brought together IEEE Student Branches from across
+                  Tunisia to network, collaborate, and share experiences.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DWE4kaKjIzI/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
               </div>
               <div class="tl-thumb">
-                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                <img src="assets/activities/ieee-tajmaana.jpg" alt="IEEE Tajmaana 3.0"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -2867,18 +3057,22 @@
             </div>
           </div>
           <div class="tl-item">
-            <div class="tl-date">March 2026</div>
+            <div class="tl-date">April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
             </div>
             <div class="tl-card">
               <div>
-                <h3>Workshop: Intro to Embedded Systems</h3>
-                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
-                  Automation chapter.</p>
+                <h3>Workshop: Chess World</h3>
+                <p>An interactive workshop introducing chess strategies while promoting critical thinking and
+                  decision-making skills.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DW4agX3jCpK/"
+                  target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
               </div>
               <div class="tl-thumb">
-                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                <img src="assets/activities/chess-world.jpg" alt="Workshop: Chess World"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -2887,18 +3081,21 @@
             </div>
           </div>
           <div class="tl-item">
-            <div class="tl-date">March 2026</div>
+            <div class="tl-date">April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
             </div>
             <div class="tl-card">
               <div>
-                <h3>Workshop: Intro to Embedded Systems</h3>
-                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
-                  Automation chapter.</p>
+                <h3>One Day Journey: Remel Forest & Beach, Bizerte</h3>
+                <p>A recreational trip that brought IEEE members together for networking, team-building, and outdoor
+                  activities in a relaxing setting.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DX9vNrYxqyp/" target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
               </div>
               <div class="tl-thumb">
-                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                <img src="assets/activities/one-day-journey.jpg" alt="One Day Journey: Remel Forest & Beach, Bizerte"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -2907,78 +3104,22 @@
             </div>
           </div>
           <div class="tl-item">
-            <div class="tl-date">March 2026</div>
+            <div class="tl-date">May 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
             </div>
             <div class="tl-card">
               <div>
-                <h3>Workshop: Intro to Embedded Systems</h3>
-                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
-                  Automation chapter.</p>
+                <h3>Code & Capture</h3>
+                <p>The first 12-hour cybersecurity and problem-solving competition organized by IEEE FSM Computer
+                  Society,
+                  combining Capture The Flag (CTF) challenges with advanced technical problem solving.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee.cs.fsm/p/DX67AFpiJ7n/" target="_blank" rel="noopener">
+                  See more <span class="tl-more-arrow">&rarr;</span>
+                </a>
               </div>
               <div class="tl-thumb">
-                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
-                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
-                    <use href="#i-camera" />
-                  </svg></div>
-              </div>
-            </div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-date">March 2026</div>
-            <div class="tl-node-col">
-              <div class="tl-node"></div>
-            </div>
-            <div class="tl-card">
-              <div>
-                <h3>Workshop: Intro to Embedded Systems</h3>
-                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
-                  Automation chapter.</p>
-              </div>
-              <div class="tl-thumb">
-                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
-                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
-                    <use href="#i-camera" />
-                  </svg></div>
-              </div>
-            </div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-date">March 2026</div>
-            <div class="tl-node-col">
-              <div class="tl-node"></div>
-            </div>
-            <div class="tl-card">
-              <div>
-                <h3>Workshop: Intro to Embedded Systems</h3>
-                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
-                  Automation chapter.</p>
-              </div>
-              <div class="tl-thumb">
-                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
-                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
-                    <use href="#i-camera" />
-                  </svg></div>
-              </div>
-            </div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-date">March 2026</div>
-            <div class="tl-node-col">
-              <div class="tl-node"></div>
-            </div>
-            <div class="tl-card">
-              <div>
-                <h3>Workshop: Intro to Embedded Systems</h3>
-                <p>Hands-on session on microcontrollers and sensor integration, run jointly with the Robotics &amp;
-                  Automation chapter.</p>
-              </div>
-              <div class="tl-thumb">
-                <img src="assets/activities/embedded-workshop.jpg" alt="Embedded systems workshop"
+                <img src="assets/activities/code-and-capture.jpg" alt="Code & Capture"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -3014,7 +3155,8 @@
             <p>Software engineering, AI, and competitive programming, through projects, talks, and contests.</p>
           </div>
           <div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter">
-            <div class="unit-logo-img"><img src="Logos/wie.jpg" alt="WIE Logo" style="width: 90px; height: auto;"></div>
+            <div class="unit-logo-img"><img src="Logos/wie.png" alt="WIE Logo" style="width: 155px; height: auto;">
+            </div>
             <span class="tag">WIE</span>
             <h3>Women in Engineering</h3>
             <p>Supporting and empowering women in engineering through mentorship, talks, and networking.</p>
