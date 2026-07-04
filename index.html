@@ -1462,6 +1462,68 @@
       margin-top: 10px;
     }
 
+    /* ===================== ACTIVITIES: YEAR TABS ===================== */
+  
+
+    .year-tabs {
+      display: inline-flex; ;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-left: 1000px;
+      margin-bottom: 30px;
+      margin-top: -100px;
+    }
+
+    .year-tab {
+      border: 2px solid var(--line);
+      background: transparent;
+      padding: 9px 22px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+
+    .year-tab:hover {
+      color: var(--text);
+    }
+
+    .year-tab.active {
+      background: var(--ieee-blue);
+      color: #fff;
+    }
+
+    .tl-item {
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .tl-item.year-hidden {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .activities-head {
+        margin-left: 0px;
+      }
+
+      .year-tabs {
+        width: 100%;
+        height: auto;
+       
+      }
+
+      .year-tab {
+        width: 20%;
+        text-align: center;
+        padding: 9px 12px;
+        font-size: 13px;
+      }
+    }
+
     /* ===================== UNIT DETAIL PANEL ===================== */
     .unit-overlay {
       position: fixed;
@@ -2658,7 +2720,7 @@
           <use href="#i-close" />
         </svg></button>
     </div>
-    <nav >
+    <nav>
       <a href="#home">Home</a>
       <a href="#about">About</a>
       <a href="#partners">Partners</a>
@@ -2840,15 +2902,18 @@
     <!-- ===================== ACTIVITIES ===================== -->
     <section class="activities" id="activities">
       <div class="container">
-        <div class="section-head reveal">
+        <div class="section-head reveal  ">
           <span class="eyebrow">What we've built</span>
           <h2>Activities &amp; events</h2>
-          <p>A running log of what the branch has organized.
-            <!-- EDIT: replace each entry below with your real activities, dates, and photos -->
-          </p>
+          <p>A running log of what the branch has organized.</p>
         </div>
+         <div class="year-tabs activities-head " role="tablist" aria-label="Filter activities by year">
+            <button class="year-tab" data-year="2024" role="tab">2024</button> 
+            <button class="year-tab" data-year="2025" role="tab">2025</button>
+            <button class="year-tab active" data-year="2026" role="tab" aria-selected="true">2026</button>
+          </div>
         <div class="timeline">
-          <div class="tl-item">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">08 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -2871,7 +2936,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">12 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -2895,7 +2960,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">23 November 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -2918,7 +2983,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">17 December 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -2942,7 +3007,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">19 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -2965,7 +3030,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">24 & 25 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -2989,7 +3054,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">11 & 12 February 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3013,7 +3078,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">01 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3037,7 +3102,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">14 & 15 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3061,7 +3126,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">08 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3085,7 +3150,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">19 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3109,7 +3174,7 @@
               </div>
             </div>
           </div>
-          <div class="tl-item">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">02 & 03 May 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3797,6 +3862,39 @@
         if (e.key === 'ArrowRight') showNext();
         if (e.key === 'ArrowLeft') showPrev();
       });
+    })();
+
+
+    (function () {
+      const yearTabs = document.querySelectorAll('.year-tab');
+      const tlItems = document.querySelectorAll('.tl-item');
+      if (!yearTabs.length || !tlItems.length) return;
+
+      function filterByYear(year) {
+        tlItems.forEach(item => {
+          const matches = item.dataset.year === year;
+          if (matches) {
+            item.classList.remove('year-hidden');
+          } else {
+            item.classList.add('year-hidden');
+          }
+        });
+      }
+
+      yearTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          yearTabs.forEach(t => {
+            t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+          });
+          tab.classList.add('active');
+          tab.setAttribute('aria-selected', 'true');
+          filterByYear(tab.dataset.year);
+        });
+      });
+
+      // initial state: show 2026 by default
+      filterByYear('2026');
     })();
   </script>
 </body>
