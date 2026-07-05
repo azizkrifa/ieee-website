@@ -38,16 +38,12 @@ app = Flask(__name__)
 # using simple tag-depth counting (no HTML parser, so nothing
 # else in the file is ever touched or re-serialized).
 # ============================================================
-def find_container_span(html, class_name, tag="div"):
-    """Return (inner_start, inner_end, outer_end) for the first
-    <tag class="...class_name..."> ... </tag> block, matching nested
-    tags of the same name by depth."""
+def _span_from_open_match(html, m, tag):
+    """Given a regex match object for an opening <tag ...>, return
+    (inner_start, inner_end, outer_end) by counting nested tags of the
+    same name until the matching close tag is found."""
     open_re = re.compile(r'<' + tag + r'\b[^>]*>')
     close_tag = '</' + tag + '>'
-
-    m = re.search(r'<' + tag + r'\b[^>]*class="[^"]*\b' + re.escape(class_name) + r'\b[^"]*"[^>]*>', html)
-    if not m:
-        return None
     inner_start = m.end()
     depth = 1
     pos = inner_start
@@ -55,7 +51,7 @@ def find_container_span(html, class_name, tag="div"):
         next_open = open_re.search(html, pos)
         next_close = html.find(close_tag, pos)
         if next_close == -1:
-            raise ValueError(f"Could not find matching close for <{tag} class=\"{class_name}\">")
+            raise ValueError(f"Could not find matching close for <{tag}> opened at {m.start()}")
         if next_open and next_open.start() < next_close:
             depth += 1
             pos = next_open.end()
@@ -64,6 +60,40 @@ def find_container_span(html, class_name, tag="div"):
             pos = next_close + len(close_tag)
     inner_end = pos - len(close_tag)
     return inner_start, inner_end, pos
+
+
+def find_container_span(html, class_name, tag="div"):
+    """Return (inner_start, inner_end, outer_end) for the first
+    <tag class="...class_name..."> ... </tag> block, matching nested
+    tags of the same name by depth."""
+    m = re.search(r'<' + tag + r'\b[^>]*class="[^"]*\b' + re.escape(class_name) + r'\b[^"]*"[^>]*>', html)
+    if not m:
+        return None
+    return _span_from_open_match(html, m, tag)
+
+
+def find_section_span_by_id(html, section_id):
+    """Return (inner_start, inner_end, outer_end) for <section id="section_id">...</section>."""
+    m = re.search(r'<section\b[^>]*\bid="' + re.escape(section_id) + r'"[^>]*>', html)
+    if not m:
+        return None
+    return _span_from_open_match(html, m, "section")
+
+
+def list_all_sections(html):
+    """Return [{id, label}] for every top-level <section id="..."> in the file,
+    in document order, with a friendly label pulled from the first heading
+    or eyebrow text inside it if present."""
+    out = []
+    for m in re.finditer(r'<section\b[^>]*\bid="([^"]+)"[^>]*>', html):
+        section_id = m.group(1)
+        span = _span_from_open_match(html, m, "section")
+        inner = html[span[0]:span[1]]
+        label = text_of(r'<h2[^>]*>(.*?)</h2>', inner, "") or \
+                text_of(r'<span class="eyebrow"[^>]*>(.*?)</span>', inner, "") or \
+                section_id
+        out.append({"id": section_id, "label": label})
+    return out
 
 
 def top_level_blocks(html, class_name, tag="div"):
@@ -101,6 +131,7 @@ def top_level_blocks(html, class_name, tag="div"):
 def text_of(pattern, block, default="", unescape=True):
     m = re.search(pattern, block, re.S)
     val = m.group(1).strip() if m else default
+    val = re.sub(r'\s+', ' ', val)
     return html_lib.unescape(val) if unescape else val
 
 
@@ -277,6 +308,55 @@ def api_save():
     return jsonify({"ok": True, "path": os.path.abspath(INDEX_HTML_PATH)})
 
 
+@app.route("/api/sections")
+def api_sections():
+    html = read_index_html()
+    return jsonify(list_all_sections(html))
+
+
+@app.route("/api/section/<section_id>", methods=["GET"])
+def api_get_section(section_id):
+    html = read_index_html()
+    span = find_section_span_by_id(html, section_id)
+    if not span:
+        return jsonify({"ok": False, "error": f"No section with id \"{section_id}\""}), 404
+    inner_start, inner_end, _ = span
+    return jsonify({"ok": True, "html": html[inner_start:inner_end]})
+
+
+@app.route("/api/section/<section_id>", methods=["POST"])
+def api_save_section(section_id):
+    data = request.get_json()
+    new_inner = data.get("html", "")
+    html = read_index_html()
+    span = find_section_span_by_id(html, section_id)
+    if not span:
+        return jsonify({"ok": False, "error": f"No section with id \"{section_id}\""}), 404
+    inner_start, inner_end, _ = span
+    backup_index()
+    new_html = html[:inner_start] + "\n" + new_inner + "\n      " + html[inner_end:]
+    with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
+        f.write(new_html)
+    return jsonify({"ok": True, "path": os.path.abspath(INDEX_HTML_PATH)})
+
+
+@app.route("/api/fullfile", methods=["GET"])
+def api_get_fullfile():
+    return jsonify({"ok": True, "html": read_index_html()})
+
+
+@app.route("/api/fullfile", methods=["POST"])
+def api_save_fullfile():
+    data = request.get_json()
+    new_html = data.get("html", "")
+    if not new_html.strip():
+        return jsonify({"ok": False, "error": "Refusing to save an empty file."}), 400
+    backup_index()
+    with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
+        f.write(new_html)
+    return jsonify({"ok": True, "path": os.path.abspath(INDEX_HTML_PATH)})
+
+
 @app.route("/")
 def index():
     return Response(DASHBOARD_HTML, mimetype="text/html")
@@ -320,13 +400,14 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   .entry { background:var(--surface2); border:1px solid var(--line); border-radius:9px; padding:10px 12px;
     display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
   .entry b { display:block; font-size:13.5px; } .entry span { color:var(--muted); font-size:12px; }
-  .entry .acts button { border:none; background:#fff; width:26px; height:26px; border-radius:6px; cursor:pointer; margin-left:4px; }
+  .entry .acts button { border:none; background: #fff; width:26px; height:26px; border-radius:6px; cursor:pointer; margin-left:4px; }
   .empty { color:var(--muted); font-size:13px; padding:16px; text-align:center; border:1.5px dashed var(--line); border-radius:9px; }
   .toast { position:fixed; bottom:22px; right:22px; background:var(--navy); color:#fff; padding:11px 18px;
     border-radius:9px; font-size:13px; opacity:0; transform:translateY(8px); transition:.25s; pointer-events:none; }
   .toast.show { opacity:1; transform:translateY(0); }
   .note { font-size:12px; color:var(--muted); background:var(--surface2); border-radius:7px; padding:9px 11px; margin-top:8px; line-height:1.5; }
-  .savebar { position:sticky; bottom:0; background:var(--surface); border-top:1px solid var(--line); padding:14px 0; margin-top:24px; }
+  .entry-scroll { max-height:480px; overflow-y:auto; padding-right:15px; }
+  .savebar { position:sticky; bottom:0; padding:14px 0; margin-top:24px; }
 </style>
 </head>
 <body>
@@ -336,6 +417,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <button class="tabbtn active" data-tab="activities">Activities</button>
     <button class="tabbtn" data-tab="units">Units &amp; Chapters</button>
     <button class="tabbtn" data-tab="stats">Hero Stats</button>
+    <button class="tabbtn" data-tab="sections">Any Section</button>
+    <button class="tabbtn" data-tab="fullfile">Full File</button>
   </nav>
   <main>
     <section class="panel active" id="p-activities">
@@ -351,11 +434,12 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <label>Instagram/Facebook link</label><input type="url" id="aLink">
           <label>Photo</label><input type="file" id="aFile" accept="image/*">
           <div class="note">Uploads straight into your <code>Act_Images/</code> folder when you click Add.</div>
-          <div class="btnrow"><button class="btn btn-p" onclick="addActivity()">Add event</button></div>
+          <div class="btnrow"><button class="btn btn-p" id="aAddBtn" onclick="addActivity()">Add event</button>
+          <button class="btn btn-g" id="aCancelBtn" style="display:none;" onclick="cancelActivityEdit()">Cancel edit</button></div>
         </div>
         <div class="card">
           <h3>Current events (<span id="aCount">0</span>)</h3>
-          <div id="aList"></div>
+          <div class="entry-scroll" id="aList"></div>
         </div>
       </div>
     </section>
@@ -374,11 +458,12 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <label>Website/Instagram link</label><input type="url" id="uWebsite">
           <label>Logo</label><input type="file" id="uFile" accept="image/*">
           <div class="note">Uploads straight into your <code>Unit_Images/</code> folder when you click Add.</div>
-          <div class="btnrow"><button class="btn btn-p" onclick="addUnit()">Add unit</button></div>
+          <div class="btnrow"><button class="btn btn-p" id="uAddBtn" onclick="addUnit()">Add unit</button>
+          <button class="btn btn-g" id="uCancelBtn" style="display:none;" onclick="cancelUnitEdit()">Cancel edit</button></div>
         </div>
         <div class="card">
           <h3>Current units (<span id="uCount">0</span>)</h3>
-          <div id="uList"></div>
+          <div class="entry-scroll" id="uList"></div>
         </div>
       </div>
     </section>
@@ -389,6 +474,43 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       <div class="card" style="max-width:520px;">
         <h3>Numbers</h3>
         <div id="sForm"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="p-sections">
+      <h2>Edit any section</h2>
+      <p class="sub">Pick any &lt;section id="..."&gt; block on the page and edit its raw HTML directly — headings, text, links, images, anything inside it.</p>
+      <div class="row" style="align-items:flex-end; margin-bottom:16px;">
+        <div>
+          <label>Section</label>
+          <select id="sectionPicker" onchange="loadSection()"></select>
+        </div>
+        <div style="flex:0;">
+          <button class="btn btn-g" onclick="refreshSections()" style="margin-top:0;">Refresh list</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Raw HTML for this section</h3>
+        <textarea id="sectionEditor" style="font-family:monospace; font-size:12.5px; white-space:pre; overflow:hidden;" oninput="autoGrow(this)"></textarea>
+        <div class="btnrow">
+          <button class="btn btn-p" onclick="saveSection()">Save this section</button>
+        </div>
+        <div class="note">This replaces everything between the section's opening and closing tags. A timestamped backup of the whole file is made first.</div>
+      </div>
+    </section>
+
+    <section class="panel" id="p-fullfile">
+      <h2>Full file editor</h2>
+      <p class="sub">The entire index.html, raw. Use this for anything outside a &lt;section&gt; — nav, footer, head/meta, styles, scripts.</p>
+      <div class="card">
+        <div class="btnrow" style="margin-top:0;">
+          <button class="btn btn-g" onclick="loadFullFile()">Load current file</button>
+        </div>
+        <textarea id="fullFileEditor" style="font-family:monospace; font-size:12px; white-space:pre; margin-top:12px; overflow:hidden;" oninput="autoGrow(this)"></textarea>
+        <div class="btnrow">
+          <button class="btn btn-p" onclick="saveFullFile()">Save entire file</button>
+        </div>
+        <div class="note">This overwrites the whole file with exactly what's in the box below, no safety checks beyond a backup. Double check it before saving — this is the "edit literally anything" option.</div>
       </div>
     </section>
 
@@ -408,10 +530,13 @@ document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');
   document.getElementById('p-'+b.dataset.tab).classList.add('active');
+  if(b.dataset.tab === 'sections') refreshSections();
+  if(b.dataset.tab === 'fullfile') loadFullFile();
 }));
 
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+function autoGrow(el){ el.style.height = 'auto'; el.style.height = (el.scrollHeight + 4) + 'px'; }
 
 async function loadState(){
   const r = await fetch('/api/state');
@@ -431,59 +556,154 @@ async function uploadFile(inputEl, dir){
 }
 
 /* ---- activities ---- */
+let editingActivity = null; // index currently being edited, or null
+
 async function addActivity(){
   const title = document.getElementById('aTitle').value.trim();
   if(!title){ toast('Add a title first.'); return; }
-  const filename = await uploadFile(document.getElementById('aFile'), 'Act_Images') || 'placeholder.jpg';
-  state.activities.push({
+  const fileInput = document.getElementById('aFile');
+  let filename = editingActivity !== null ? state.activities[editingActivity].img : 'placeholder.jpg';
+  if(fileInput.files && fileInput.files[0]){
+    filename = await uploadFile(fileInput, 'Act_Images') || filename;
+  }
+  const entry = {
     title, date: document.getElementById('aDate').value.trim(),
     year: document.getElementById('aYear').value,
     desc: document.getElementById('aDesc').value.trim(),
     link: document.getElementById('aLink').value.trim(),
     img: filename
-  });
+  };
+  if(editingActivity !== null){
+    state.activities[editingActivity] = entry;
+    toast('Event updated (remember to Save)');
+  } else {
+    state.activities.push(entry);
+    toast('Event added (remember to Save)');
+  }
+  cancelActivityEdit();
+  renderActivities();
+}
+function editActivity(i){
+  const a = state.activities[i];
+  document.getElementById('aTitle').value = a.title;
+  document.getElementById('aDate').value = a.date;
+  document.getElementById('aYear').value = a.year;
+  document.getElementById('aDesc').value = a.desc;
+  document.getElementById('aLink').value = a.link;
+  document.getElementById('aFile').value = '';
+  editingActivity = i;
+  document.getElementById('aAddBtn').textContent = 'Save changes';
+  document.getElementById('aCancelBtn').style.display = 'inline-block';
+}
+function cancelActivityEdit(){
+  editingActivity = null;
   ['aTitle','aDate','aDesc','aLink'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('aFile').value = '';
-  renderActivities();
-  toast('Event added (remember to Save)');
+  document.getElementById('aAddBtn').textContent = 'Add event';
+  document.getElementById('aCancelBtn').style.display = 'none';
 }
-function moveA(i,d){ const j=i+d; if(j<0||j>=state.activities.length) return; [state.activities[i],state.activities[j]]=[state.activities[j],state.activities[i]]; renderActivities(); }
-function delA(i){ state.activities.splice(i,1); renderActivities(); }
+function delA(i){ state.activities.splice(i,1); if(editingActivity===i) cancelActivityEdit(); renderActivities(); }
+
+let dragIndex = null;
 function renderActivities(){
   document.getElementById('aCount').textContent = state.activities.length;
   const el = document.getElementById('aList');
   el.innerHTML = state.activities.length ? state.activities.map((a,i)=>`
-    <div class="entry"><div><b>${esc(a.title)}</b><span>${esc(a.date)} · ${a.year}</span></div>
-    <div class="acts"><button onclick="moveA(${i},-1)">↑</button><button onclick="moveA(${i},1)">↓</button><button onclick="delA(${i})">×</button></div></div>`).join('')
+    <div class="entry" draggable="true" data-i="${i}"
+      ondragstart="dragIndex=${i}; this.style.opacity='0.4';"
+      ondragend="this.style.opacity='1';"
+      ondragover="event.preventDefault();"
+      ondrop="dropActivity(${i});">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="cursor:grab; color:var(--muted);">&#9776;</span>
+        <div><b>${esc(a.title)}</b><span>${esc(a.date)} · ${a.year}</span></div>
+      </div>
+      <div class="acts"><button onclick="editActivity(${i})" title="Edit">&#9998;</button><button onclick="delA(${i})" title="Delete">&times;</button></div></div>`).join('')
     : '<div class="empty">No events.</div>';
+}
+function dropActivity(dropIdx){
+  if(dragIndex === null || dragIndex === dropIdx) return;
+  const [moved] = state.activities.splice(dragIndex, 1);
+  state.activities.splice(dropIdx, 0, moved);
+  dragIndex = null;
+  renderActivities();
 }
 
 /* ---- units ---- */
+let editingUnit = null;
+
 async function addUnit(){
   const name = document.getElementById('uName').value.trim();
   if(!name){ toast('Add a name first.'); return; }
-  const filename = await uploadFile(document.getElementById('uFile'), 'Unit_Images') || 'placeholder-logo.svg';
-  state.units.push({
+  const fileInput = document.getElementById('uFile');
+  let filename = editingUnit !== null ? state.units[editingUnit].logo : 'placeholder-logo.svg';
+  if(fileInput.files && fileInput.files[0]){
+    filename = await uploadFile(fileInput, 'Unit_Images') || filename;
+  }
+  const entry = {
     name, tag: document.getElementById('uTag').value.trim(),
     color: document.getElementById('uColor').value,
     summary: document.getElementById('uSummary').value.trim(),
     details: document.getElementById('uDetails').value.trim(),
     website: document.getElementById('uWebsite').value.trim(),
     logo: filename
-  });
-  ['uName','uTag','uSummary','uDetails','uWebsite'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('uFile').value = '';
+  };
+  if(editingUnit !== null){
+    state.units[editingUnit] = entry;
+    toast('Unit updated (remember to Save)');
+  } else {
+    state.units.push(entry);
+    toast('Unit added (remember to Save)');
+  }
+  cancelUnitEdit();
   renderUnits();
-  toast('Unit added (remember to Save)');
 }
-function delU(i){ state.units.splice(i,1); renderUnits(); }
+function editUnit(i){
+  const u = state.units[i];
+  document.getElementById('uName').value = u.name;
+  document.getElementById('uTag').value = u.tag;
+  document.getElementById('uColor').value = u.color || '#00629B';
+  document.getElementById('uSummary').value = u.summary;
+  document.getElementById('uDetails').value = u.details;
+  document.getElementById('uWebsite').value = u.website;
+  document.getElementById('uFile').value = '';
+  editingUnit = i;
+  document.getElementById('uAddBtn').textContent = 'Save changes';
+  document.getElementById('uCancelBtn').style.display = 'inline-block';
+}
+function cancelUnitEdit(){
+  editingUnit = null;
+  ['uName','uTag','uSummary','uDetails','uWebsite'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('uColor').value = '#00629B';
+  document.getElementById('uFile').value = '';
+  document.getElementById('uAddBtn').textContent = 'Add unit';
+  document.getElementById('uCancelBtn').style.display = 'none';
+}
+function delU(i){ state.units.splice(i,1); if(editingUnit===i) cancelUnitEdit(); renderUnits(); }
+
+let dragUnitIndex = null;
 function renderUnits(){
   document.getElementById('uCount').textContent = state.units.length;
   const el = document.getElementById('uList');
   el.innerHTML = state.units.length ? state.units.map((u,i)=>`
-    <div class="entry"><div><b>${esc(u.name)}</b><span>${esc(u.tag)}</span></div>
-    <div class="acts"><button onclick="delU(${i})">×</button></div></div>`).join('')
+    <div class="entry" draggable="true"
+      ondragstart="dragUnitIndex=${i}; this.style.opacity='0.4';"
+      ondragend="this.style.opacity='1';"
+      ondragover="event.preventDefault();"
+      ondrop="dropUnit(${i});">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="cursor:grab; color:var(--muted);">&#9776;</span>
+        <div><b>${esc(u.name)}</b><span>${esc(u.tag)}</span></div>
+      </div>
+      <div class="acts"><button onclick="editUnit(${i})" title="Edit">&#9998;</button><button onclick="delU(${i})" title="Delete">&times;</button></div></div>`).join('')
     : '<div class="empty">No units.</div>';
+}
+function dropUnit(dropIdx){
+  if(dragUnitIndex === null || dragUnitIndex === dropIdx) return;
+  const [moved] = state.units.splice(dragUnitIndex, 1);
+  state.units.splice(dropIdx, 0, moved);
+  dragUnitIndex = null;
+  renderUnits();
 }
 
 /* ---- stats ---- */
@@ -508,7 +728,54 @@ async function saveAll(){
   }
 }
 
+/* ---- any section ---- */
+async function refreshSections(){
+  const r = await fetch('/api/sections');
+  const list = await r.json();
+  const sel = document.getElementById('sectionPicker');
+  sel.innerHTML = list.map(s => `<option value="${esc(s.id)}">${esc(s.label)} (#${esc(s.id)})</option>`).join('');
+  if(list.length) loadSection();
+}
+async function loadSection(){
+  const id = document.getElementById('sectionPicker').value;
+  if(!id) return;
+  const r = await fetch('/api/section/' + encodeURIComponent(id));
+  const j = await r.json();
+  const el = document.getElementById('sectionEditor');
+  el.value = j.ok ? j.html : ('Error: ' + j.error);
+  autoGrow(el);
+}
+async function saveSection(){
+  const id = document.getElementById('sectionPicker').value;
+  if(!id) return;
+  const htmlVal = document.getElementById('sectionEditor').value;
+  const r = await fetch('/api/section/' + encodeURIComponent(id), {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({html: htmlVal})
+  });
+  const j = await r.json();
+  toast(j.ok ? 'Section #' + id + ' saved to index.html' : 'Error: ' + j.error);
+}
+
+/* ---- full file ---- */
+async function loadFullFile(){
+  const r = await fetch('/api/fullfile');
+  const j = await r.json();
+  const el = document.getElementById('fullFileEditor');
+  el.value = j.ok ? j.html : ('Error: ' + j.error);
+  autoGrow(el);
+}
+async function saveFullFile(){
+  if(!confirm('This overwrites the entire index.html with what is in the box. A backup will be made, but double check you have not broken anything. Continue?')) return;
+  const htmlVal = document.getElementById('fullFileEditor').value;
+  const r = await fetch('/api/fullfile', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({html: htmlVal})
+  });
+  const j = await r.json();
+  toast(j.ok ? 'Whole file saved' : 'Error: ' + j.error);
+}
+
 loadState();
+refreshSections();sa
 </script>
 </body>
 </html>
