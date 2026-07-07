@@ -1100,14 +1100,14 @@
       border-radius: var(--radius);
       background: var(--surface);
       padding: 26px 20px;
+      margin-top: 10px;
       text-align: center;
-      transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+      transition: transform .35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .35s ease, border-color .35s ease;
     }
 
     .partner-card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(59, 158, 219, 0.45);
-      box-shadow: 0 14px 30px rgba(59, 158, 219, 0.12);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(59, 158, 219, 0.10);
     }
 
     .partner-logo {
@@ -1832,6 +1832,71 @@
       border-color: rgba(96, 184, 238, 0.45);
     }
 
+    .team-socials {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+
+      opacity: 0;
+      transform: translateY(12px);
+
+      transition:
+        opacity .3s ease,
+        transform .3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .team-card:hover .team-socials {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ---------- Light Mode ---------- */
+
+    .team-socials a {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background: rgba(255, 255, 255, 0.9);
+      color: #105B98;
+
+      border: 1px solid rgba(16, 91, 152, 0.15);
+      box-shadow: 0 6px 18px rgba(16, 91, 152, 0.12);
+
+      transition:
+        transform .25s ease,
+        background .25s ease,
+        color .25s ease,
+        box-shadow .25s ease;
+    }
+
+    .team-socials a:hover {
+      transform: translateY(-3px);
+      background: var(--ieee-blue);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(59, 158, 219, 0.28);
+    }
+
+    /* ---------- Dark Mode ---------- */
+
+    html[data-theme="dark"] .team-socials a {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: none;
+      backdrop-filter: blur(8px);
+    }
+
+    html[data-theme="dark"] .team-socials a:hover {
+      background: var(--ieee-blue-light);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(96, 184, 238, 0.25);
+    }
+
     /* ===================== GALLERY ===================== */
     .gallery {
       padding: 110px 0;
@@ -2383,7 +2448,7 @@
 
     .reveal.in-view {
       opacity: 1;
-      transform: none;
+
     }
 
     /* ===================== RESPONSIVE ===================== */
@@ -2925,7 +2990,8 @@
               <div>
                 <h3>Integration Day</h3>
                 <p>A welcoming event introducing new members to IEEE, its activities, and the student community.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DBmXXgiNpqq/" target="_blank" rel="noopener">
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DBmXXgiNpqq/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -2949,7 +3015,8 @@
                 <h3>First General Assembly</h3>
                 <p>The first official gathering of IEEE members to present the Student Branch's vision, activities, and
                   future plans.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DB_v7DHth1K/" target="_blank" rel="noopener">
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DB_v7DHth1K/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -2972,7 +3039,8 @@
               <div>
                 <h3>Integration Day</h3>
                 <p>A welcoming event introducing new members to IEEE, its activities, and the student community.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DQHhIK7DA1x/" target="_blank" rel="noopener">
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DQHhIK7DA1x/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -2994,9 +3062,10 @@
             <div class="tl-card">
               <div>
                 <h3>Workshop: Time Management</h3>
-                <p>Learn effective time management strategies to balance your academic and extracurricular
-                    commitments.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DQzPSg0jEm8/" target="_blank" rel="noopener">
+                <p>Learn effective time management strategies to balance your academic and extracurricular commitments.
+                </p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DQzPSg0jEm8/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3018,8 +3087,10 @@
             <div class="tl-card">
               <div>
                 <h3>Cafe Talk: Tarantinoo Cafe</h3>
-                <p>A casual networking gathering at Tarantinoo Cafe where IEEE members connected, exchanged ideas, and strengthened their community.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DQrybH1jO16/" target="_blank" rel="noopener">
+                <p>A casual networking gathering at Tarantinoo Cafe where IEEE members connected, exchanged ideas, and
+                  strengthened their community.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DQrybH1jO16/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3042,7 +3113,8 @@
               <div>
                 <h3>Team Building: Flamingo Golf Course</h3>
                 <p>Join us for a fun-filled day of team building activities at the Flamingo Golf Course!</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DRudXfGjILy/" target="_blank" rel="noopener">
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DRudXfGjILy/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3064,10 +3136,10 @@
             <div class="tl-card">
               <div>
                 <h3>Workshop: Linkedin &amp; Cv Creation</h3>
-                <p>Learn how to create a professional LinkedIn profile and CV that will help you stand out to
-                    potential
-                    employers.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DSmbzHPjHuf/" target="_blank" rel="noopener">
+                <p>Learn how to create a professional LinkedIn profile and CV that will help you stand out to potential
+                  employers.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DSmbzHPjHuf/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3090,7 +3162,8 @@
               <div>
                 <h3>Team Building: Tag's Monastir</h3>
                 <p>Join us for a fun-filled day of team building activities at Tag's Monastir!</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DT0pFKfDNkf/" target="_blank" rel="noopener">
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DT0pFKfDNkf/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3112,10 +3185,10 @@
             <div class="tl-card">
               <div>
                 <h3>Tunihack 11.0</h3>
-                <p>hackathon held at ENSI where participants developed innovative solutions and enhanced their
-                    technical
-                    skills.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DUTGO2EDOUu/" target="_blank" rel="noopener">
+                <p>hackathon held at ENSI where participants developed innovative solutions and enhanced their technical
+                  skills.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DUTGO2EDOUu/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3138,8 +3211,9 @@
               <div>
                 <h3>WEHACK 0.0</h3>
                 <p>The first hackathon organized at FSM by our IEEE Student Branch, bringing participants together to
-                    build innovative technology projects.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DVGJ2ODjHUW/" target="_blank" rel="noopener">
+                  build innovative technology projects.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DVGJ2ODjHUW/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3162,8 +3236,9 @@
               <div>
                 <h3>FastIEEEng 2.0</h3>
                 <p>A social gathering organized in collaboration with IEEE Polytech Monastir to celebrate Ramadan and
-                    strengthen connections between members.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DVvqeDRDAgI/" target="_blank" rel="noopener">
+                  strengthen connections between members.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DVvqeDRDAgI/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3186,8 +3261,9 @@
               <div>
                 <h3>IEEE Tajmaana 3.0</h3>
                 <p>A major event held at Polytechnique Sousse that brought together IEEE Student Branches from across
-                    Tunisia to network, collaborate, and share experiences.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DWE4kaKjIzI/" target="_blank" rel="noopener">
+                  Tunisia to network, collaborate, and share experiences.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DWE4kaKjIzI/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3210,8 +3286,9 @@
               <div>
                 <h3>Workshop: Chess World</h3>
                 <p>An interactive workshop introducing chess strategies while promoting critical thinking and
-                    decision-making skills.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DW4agX3jCpK/" target="_blank" rel="noopener">
+                  decision-making skills.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DW4agX3jCpK/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3234,8 +3311,9 @@
               <div>
                 <h3>One Day Journey: Remel Forest &amp; Beach, Bizerte</h3>
                 <p>A recreational trip that brought IEEE members together for networking, team-building, and outdoor
-                    activities in a relaxing setting.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DX9vNrYxqyp/" target="_blank" rel="noopener">
+                  activities in a relaxing setting.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/reel/DX9vNrYxqyp/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3258,9 +3336,9 @@
               <div>
                 <h3>Code &amp; Capture</h3>
                 <p>The first 12-hour cybersecurity and problem-solving competition organized by IEEE FSM Computer
-                    Society,
-                    combining Capture The Flag (CTF) challenges with advanced technical problem solving.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee.cs.fsm/p/DX67AFpiJ7n/" target="_blank" rel="noopener">
+                  Society, combining Capture The Flag (CTF) challenges with advanced technical problem solving.</p>
+                <a class="tl-more" href="https://www.instagram.com/ieee.cs.fsm/p/DX67AFpiJ7n/" target="_blank"
+                  rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3292,23 +3370,20 @@
           <p>Smaller communities inside the branch, each focused on a specific field.</p>
         </div>
         <div class="units-grid">
-          <div class="unit-card reveal" style="--unit-color:#F5A623;"
-               data-website="https://example.com/cs-chapter"
-               data-details="">
-            <div class="unit-logo-img"><img src="Logos/ieee-cs-white.svg" alt="Computer Society Chapter Logo"
-                style="width: 220px; height: auto; padding: 20px;"
+          <div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
+            data-details="">
+            <div class="unit-logo-img"><img id="cs-logo" src="Logos/ieee-cs-white.svg"
+                alt="Computer Society Chapter Logo" style="width: 200px; height: auto; padding: 25px;"
                 onerror="this.style.display='none';"></div>
             <span class="tag">CS</span>
             <h3>Computer Society Chapter</h3>
             <p>Software engineering, AI, and competitive programming, through projects, talks, and contests.</p>
           </div>
 
-          <div class="unit-card reveal" style="--unit-color:#8A1870;"
-               data-website="https://example.com/wie-chapter"
-               data-details="">
-            <div class="unit-logo-img"><img src="Logos/ieee-wie-white.png" alt="Women in Engineering Logo"
-                style="width: 150px; height: auto; padding: 0px;"
-                onerror="this.style.display='none';"></div>
+          <div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
+            data-details="">
+            <div class="unit-logo-img"><img id="wie-logo" src="Logos/ieee-wie-white.png" alt="Women in Engineering Logo"
+                style="width: 155px; height: auto; padding: 0px;" onerror="this.style.display='none';"></div>
             <span class="tag">WIE</span>
             <h3>Women in Engineering</h3>
             <p>Supporting and empowering women in engineering through mentorship, talks, and networking.</p>
@@ -3355,6 +3430,19 @@
               <div class="avatar-fallback" style="display:none;">MN</div>
             </div>
             <div class="team-overlay">
+              <div class="team-socials">
+                <a href="#" target="_blank" aria-label="LinkedIn">
+                  <i class="fab fa-linkedin-in"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Instagram">
+                  <i class="fab fa-instagram"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </a>
+              </div>
               <div class="name">Member Name</div>
               <div class="role">Branch Chair</div>
             </div>
@@ -3366,6 +3454,19 @@
               <div class="avatar-fallback" style="display:none;">MN</div>
             </div>
             <div class="team-overlay">
+              <div class="team-socials">
+                <a href="#" target="_blank" aria-label="LinkedIn">
+                  <i class="fab fa-linkedin-in"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Instagram">
+                  <i class="fab fa-instagram"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </a>
+              </div>
               <div class="name">Member Name</div>
               <div class="role">Vice Chair</div>
             </div>
@@ -3377,6 +3478,19 @@
               <div class="avatar-fallback" style="display:none;">MN</div>
             </div>
             <div class="team-overlay">
+              <div class="team-socials">
+                <a href="#" target="_blank" aria-label="LinkedIn">
+                  <i class="fab fa-linkedin-in"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Instagram">
+                  <i class="fab fa-instagram"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </a>
+              </div>
               <div class="name">Member Name</div>
               <div class="role">Secretary</div>
             </div>
@@ -3388,6 +3502,19 @@
               <div class="avatar-fallback" style="display:none;">MN</div>
             </div>
             <div class="team-overlay">
+              <div class="team-socials">
+                <a href="#" target="_blank" aria-label="LinkedIn">
+                  <i class="fab fa-linkedin-in"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Instagram">
+                  <i class="fab fa-instagram"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </a>
+              </div>
               <div class="name">Member Name</div>
               <div class="role">Treasurer</div>
             </div>
@@ -3399,6 +3526,19 @@
               <div class="avatar-fallback" style="display:none;">MN</div>
             </div>
             <div class="team-overlay">
+              <div class="team-socials">
+                <a href="#" target="_blank" aria-label="LinkedIn">
+                  <i class="fab fa-linkedin-in"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Instagram">
+                  <i class="fab fa-instagram"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </a>
+              </div>
               <div class="name">Member Name</div>
               <div class="role">Media Manager</div>
             </div>
@@ -3410,6 +3550,19 @@
               <div class="avatar-fallback" style="display:none;">MN</div>
             </div>
             <div class="team-overlay">
+              <div class="team-socials">
+                <a href="#" target="_blank" aria-label="LinkedIn">
+                  <i class="fab fa-linkedin-in"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Instagram">
+                  <i class="fab fa-instagram"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </a>
+              </div>
               <div class="name">Member Name</div>
               <div class="role">CS Chapter Chair</div>
             </div>
@@ -3421,6 +3574,19 @@
               <div class="avatar-fallback" style="display:none;">MN</div>
             </div>
             <div class="team-overlay">
+              <div class="team-socials">
+                <a href="#" target="_blank" aria-label="LinkedIn">
+                  <i class="fab fa-linkedin-in"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Instagram">
+                  <i class="fab fa-instagram"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </a>
+              </div>
               <div class="name">Member Name</div>
               <div class="role">WIE Affinity Group Chair</div>
             </div>
@@ -3432,6 +3598,19 @@
               <div class="avatar-fallback" style="display:none;">MN</div>
             </div>
             <div class="team-overlay">
+              <div class="team-socials">
+                <a href="#" target="_blank" aria-label="LinkedIn">
+                  <i class="fab fa-linkedin-in"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Instagram">
+                  <i class="fab fa-instagram"></i>
+                </a>
+
+                <a href="#" target="_blank" aria-label="Facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </a>
+              </div>
               <div class="name">Member Name</div>
               <div class="role">Events Coordinator</div>
             </div>

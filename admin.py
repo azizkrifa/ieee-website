@@ -29,6 +29,7 @@ INDEX_HTML_PATH = "index.html"       # path to your site's index.html
 ACTIVITIES_IMG_DIR = "Act_Images"    # folder used by <img src="Act_Images/...">
 UNITS_IMG_DIR = "Unit_Images"        # folder for unit logos (adjust if yours differs)
 PORT = 5055
+DEFAULT_YEAR = str(datetime.datetime.now().year)
 
 app = Flask(__name__)
 
@@ -139,6 +140,48 @@ def esc(s):
     return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
+def year_from_date_string(date_str, fallback=DEFAULT_YEAR):
+    """Pull a 4-digit year out of a display date like '08 April 2026' or
+    '24 & 25 January 2026'. This is the single source of truth for year —
+    nothing else in the app stores year separately, so it can never drift
+    out of sync with the date shown."""
+    m = re.search(r'(\d{4})', date_str or "")
+    return m.group(1) if m else fallback
+
+
+# ============================================================
+# Structural validation — run before every write so a bug in the
+# generator can never silently corrupt the file. If this fails,
+# nothing is written and the original file is left untouched.
+# ============================================================
+class ValidationError(Exception):
+    pass
+
+
+def tag_balance_ok(html, tag):
+    opens = len(re.findall(r'<' + tag + r'\b[^>]*(?<!/)>', html))
+    closes = len(re.findall(r'</' + tag + r'>', html))
+    return opens == closes, opens, closes
+
+
+def validate_html(html, context=""):
+    for tag in ("div", "section"):
+        ok, opens, closes = tag_balance_ok(html, tag)
+        if not ok:
+            raise ValidationError(
+                f"Refused to save{(' — ' + context) if context else ''}: "
+                f"<{tag}> tags are unbalanced ({opens} opening vs {closes} closing). "
+                f"Nothing was written; your file is unchanged."
+            )
+    for required in ('<div class="timeline">', '<div class="units-grid">', "</html>"):
+        if required not in html:
+            raise ValidationError(
+                f"Refused to save{(' — ' + context) if context else ''}: "
+                f"expected to still find `{required}` in the result but it's missing. "
+                f"Nothing was written; your file is unchanged."
+            )
+
+
 # ============================================================
 # Parsing: read current activities / units / stats from file
 # ============================================================
@@ -155,14 +198,15 @@ def parse_activities(html):
     items = []
     for start, end in top_level_blocks(inner, "tl-item"):
         block = inner[start:end]
+        date = text_of(r'<div class="tl-date">(.*?)</div>', block)
         year_m = re.search(r'data-year="(\d{4})"', block)
         items.append({
-            "year": year_m.group(1) if year_m else "2026",
-            "date": text_of(r'<div class="tl-date">(.*?)</div>', block),
+            "date": date,
+            "year": year_m.group(1) if year_m else year_from_date_string(date),
             "title": text_of(r'<h3>(.*?)</h3>', block),
             "desc": text_of(r'<h3>.*?</h3>\s*<p>(.*?)</p>', block),
             "link": text_of(r'<a class="tl-more" href="(.*?)"', block),
-            "img": text_of(r'<img src="(?:' + ACTIVITIES_IMG_DIR + r'/)?(.*?)"', block, "placeholder.jpg"),
+            "img": text_of(r'<img src="(?:' + re.escape(ACTIVITIES_IMG_DIR) + r'/)?(.*?)"', block, "placeholder.jpg"),
         })
     return items
 
@@ -197,24 +241,29 @@ def parse_stats(html):
 
 
 # ============================================================
-# Serialization: build HTML blocks from state
+# Serialization: build HTML blocks from state.
+# Every field is read with .get(..., default) rather than [..],
+# so a missing/renamed key on the JS side produces a sane fallback
+# instead of a hard crash mid-save.
 # ============================================================
 def build_activity_block(a):
-    return f'''          <div class="tl-item" data-year="{esc(a['year'])}">
-            <div class="tl-date">{esc(a['date'])}</div>
+    date = a.get("date", "")
+    year = year_from_date_string(date, fallback=a.get("year", DEFAULT_YEAR))
+    return f'''          <div class="tl-item" data-year="{esc(year)}">
+            <div class="tl-date">{esc(date)}</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
             </div>
             <div class="tl-card">
               <div>
-                <h3>{esc(a['title'])}</h3>
-                <p>{esc(a['desc'])}</p>
-                <a class="tl-more" href="{esc(a['link'])}" target="_blank" rel="noopener">
+                <h3>{esc(a.get("title", ""))}</h3>
+                <p>{esc(a.get("desc", ""))}</p>
+                <a class="tl-more" href="{esc(a.get("link", ""))}" target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
               <div class="tl-thumb">
-                <img src="{ACTIVITIES_IMG_DIR}/{esc(a['img'])}" alt="{esc(a['title'])}"
+                <img src="{ACTIVITIES_IMG_DIR}/{esc(a.get("img", "placeholder.jpg"))}" alt="{esc(a.get("title", ""))}"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="ph-icon" style="display:none;"><svg class="icon" style="width:30px;height:30px;">
                     <use href="#i-camera" />
@@ -225,31 +274,37 @@ def build_activity_block(a):
 
 
 def build_unit_block(u):
-    return f'''          <div class="unit-card reveal" style="--unit-color:{esc(u['color'])};"
-               data-website="{esc(u['website'])}"
-               data-details="{esc(u['details'])}">
-            <div class="unit-logo-img"><img src="{esc(u['logo'])}" alt="{esc(u['name'])} Logo"
+    return f'''          <div class="unit-card reveal" style="--unit-color:{esc(u.get("color", "#00629B"))};"
+               data-website="{esc(u.get("website", ""))}"
+               data-details="{esc(u.get("details", ""))}">
+            <div class="unit-logo-img"><img src="{esc(u.get("logo", "placeholder-logo.svg"))}" alt="{esc(u.get("name", ""))} Logo"
                 style="width: 180px; height: auto; padding: 25px;"
                 onerror="this.style.display='none';"></div>
-            <span class="tag">{esc(u['tag'])}</span>
-            <h3>{esc(u['name'])}</h3>
-            <p>{esc(u['summary'])}</p>
+            <span class="tag">{esc(u.get("tag", ""))}</span>
+            <h3>{esc(u.get("name", ""))}</h3>
+            <p>{esc(u.get("summary", ""))}</p>
           </div>'''
 
 
 def replace_container(html, class_name, new_inner_html):
     span = find_container_span(html, class_name)
     if not span:
-        raise ValueError(f"Could not find container with class {class_name}")
+        raise ValidationError(f"Could not find a container with class \"{class_name}\" — nothing was changed.")
     inner_start, inner_end, _ = span
     return html[:inner_start] + "\n" + new_inner_html + "\n        " + html[inner_end:]
 
 
 def replace_stats(html, stats):
+    existing_count = len(re.findall(r'<div class="hero-stat-row">', html))
+    if len(stats) != existing_count:
+        raise ValidationError(
+            f"Expected {existing_count} hero stat rows but received {len(stats)} — refusing to save "
+            f"to avoid dropping or misaligning a stat. Nothing was changed."
+        )
     it = iter(stats)
     def repl(_m):
         s = next(it)
-        return f'<div class="hero-stat-row"><span class="label">{esc(s["label"])}</span><span class="num">{esc(s["value"])}</span></div>'
+        return f'<div class="hero-stat-row"><span class="label">{esc(s.get("label",""))}</span><span class="num">{esc(s.get("value",""))}</span></div>'
     new_html, n = re.subn(
         r'<div class="hero-stat-row"><span class="label">.*?</span><span class="num">.*?</span></div>',
         repl, html
@@ -263,17 +318,29 @@ def backup_index():
         shutil.copy(INDEX_HTML_PATH, f"{INDEX_HTML_PATH}.bak_{ts}")
 
 
+def write_index_html_safely(new_html, context=""):
+    """Validate before writing, back up, then write. Raises ValidationError
+    (caught by the route) instead of ever writing something broken."""
+    validate_html(new_html, context=context)
+    backup_index()
+    with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
+        f.write(new_html)
+
+
 # ============================================================
 # Routes
 # ============================================================
 @app.route("/api/state")
 def api_state():
-    html = read_index_html()
-    return jsonify({
-        "activities": parse_activities(html),
-        "units": parse_units(html),
-        "stats": parse_stats(html),
-    })
+    try:
+        html = read_index_html()
+        return jsonify({
+            "activities": parse_activities(html),
+            "units": parse_units(html),
+            "stats": parse_stats(html),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/upload", methods=["POST"])
@@ -283,6 +350,8 @@ def api_upload():
     if not file or file.filename == "":
         return jsonify({"ok": False, "error": "No file provided"}), 400
     filename = secure_filename(file.filename)
+    if not filename:
+        return jsonify({"ok": False, "error": "That filename isn't valid"}), 400
     os.makedirs(target_dir, exist_ok=True)
     save_path = os.path.join(target_dir, filename)
     file.save(save_path)
@@ -291,27 +360,32 @@ def api_upload():
 
 @app.route("/api/save", methods=["POST"])
 def api_save():
-    data = request.get_json()
-    html = read_index_html()
-    backup_index()
+    try:
+        data = request.get_json()
+        html = read_index_html()
 
-    activities_html = "\n\n".join(build_activity_block(a) for a in data.get("activities", []))
-    units_html = "\n\n".join(build_unit_block(u) for u in data.get("units", []))
+        activities_html = "\n\n".join(build_activity_block(a) for a in data.get("activities", []))
+        units_html = "\n\n".join(build_unit_block(u) for u in data.get("units", []))
 
-    html = replace_container(html, "timeline", activities_html)
-    html = replace_container(html, "units-grid", units_html)
-    html = replace_stats(html, data.get("stats", []))
+        new_html = replace_container(html, "timeline", activities_html)
+        new_html = replace_container(new_html, "units-grid", units_html)
+        new_html = replace_stats(new_html, data.get("stats", []))
 
-    with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
-        f.write(html)
-
-    return jsonify({"ok": True, "path": os.path.abspath(INDEX_HTML_PATH)})
+        write_index_html_safely(new_html, context="structured save")
+        return jsonify({"ok": True, "path": os.path.abspath(INDEX_HTML_PATH)})
+    except ValidationError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}"}), 500
 
 
 @app.route("/api/sections")
 def api_sections():
-    html = read_index_html()
-    return jsonify(list_all_sections(html))
+    try:
+        html = read_index_html()
+        return jsonify(list_all_sections(html))
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/section/<section_id>", methods=["GET"])
@@ -326,18 +400,21 @@ def api_get_section(section_id):
 
 @app.route("/api/section/<section_id>", methods=["POST"])
 def api_save_section(section_id):
-    data = request.get_json()
-    new_inner = data.get("html", "")
-    html = read_index_html()
-    span = find_section_span_by_id(html, section_id)
-    if not span:
-        return jsonify({"ok": False, "error": f"No section with id \"{section_id}\""}), 404
-    inner_start, inner_end, _ = span
-    backup_index()
-    new_html = html[:inner_start] + "\n" + new_inner + "\n      " + html[inner_end:]
-    with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
-        f.write(new_html)
-    return jsonify({"ok": True, "path": os.path.abspath(INDEX_HTML_PATH)})
+    try:
+        data = request.get_json()
+        new_inner = data.get("html", "")
+        html = read_index_html()
+        span = find_section_span_by_id(html, section_id)
+        if not span:
+            return jsonify({"ok": False, "error": f"No section with id \"{section_id}\""}), 404
+        inner_start, inner_end, _ = span
+        new_html = html[:inner_start] + "\n" + new_inner + "\n      " + html[inner_end:]
+        write_index_html_safely(new_html, context=f"section #{section_id}")
+        return jsonify({"ok": True, "path": os.path.abspath(INDEX_HTML_PATH)})
+    except ValidationError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}"}), 500
 
 
 @app.route("/api/fullfile", methods=["GET"])
@@ -347,14 +424,17 @@ def api_get_fullfile():
 
 @app.route("/api/fullfile", methods=["POST"])
 def api_save_fullfile():
-    data = request.get_json()
-    new_html = data.get("html", "")
-    if not new_html.strip():
-        return jsonify({"ok": False, "error": "Refusing to save an empty file."}), 400
-    backup_index()
-    with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
-        f.write(new_html)
-    return jsonify({"ok": True, "path": os.path.abspath(INDEX_HTML_PATH)})
+    try:
+        data = request.get_json()
+        new_html = data.get("html", "")
+        if not new_html.strip():
+            return jsonify({"ok": False, "error": "Refusing to save an empty file."}), 400
+        write_index_html_safely(new_html, context="full file edit")
+        return jsonify({"ok": True, "path": os.path.abspath(INDEX_HTML_PATH)})
+    except ValidationError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}"}), 500
 
 
 @app.route("/")
@@ -372,6 +452,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     --navy:#0D1117; --bg:#F4F8FC; --surface:#fff; --surface2:#EEF5FB;
     --line:rgba(17,32,51,.10); --text:#0D1B26; --muted:#5C7186;
     --blue:#00629B; --radius:12px; --mono:'Consolas','SF Mono',monospace;
+    --danger:#C0392B; --danger-bg:#FCEBE9;
   }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; }
@@ -390,24 +471,27 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   .card h3 { margin:0 0 14px; font-size:13.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); font-family:var(--mono); }
   label { display:block; font-size:13px; font-weight:600; margin:12px 0 5px; }
   label:first-of-type { margin-top:0; }
-  input[type=text],input[type=url],textarea,select { width:100%; padding:9px 11px; border-radius:8px; border:1.5px solid var(--line); font-size:13.5px; background:var(--surface2); }
+  input[type=text],input[type=url],input[type=date],textarea,select { width:100%; padding:9px 11px; border-radius:8px; border:1.5px solid var(--line); font-size:13.5px; background:var(--surface2); }
   textarea { resize:vertical; min-height:60px; font-family:inherit; }
   input[type=color] { width:48px; height:34px; border:1.5px solid var(--line); border-radius:8px; padding:2px; }
   .row { display:flex; gap:10px; } .row > div { flex:1; }
   .btn { padding:9px 16px; border-radius:999px; border:none; font-weight:600; font-size:13px; cursor:pointer; }
   .btn-p { background:var(--blue); color:#fff; } .btn-g { background:var(--surface2); border:1px solid var(--line); }
-  .btnrow { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+  .btnrow { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; align-items:center; }
   .entry { background:var(--surface2); border:1px solid var(--line); border-radius:9px; padding:10px 12px;
     display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
   .entry b { display:block; font-size:13.5px; } .entry span { color:var(--muted); font-size:12px; }
-  .entry .acts button { border:none; background: #fff; width:26px; height:26px; border-radius:6px; cursor:pointer; margin-left:4px; }
+  .entry .acts button { border:none; background:#fff; width:26px; height:26px; border-radius:6px; cursor:pointer; margin-left:4px; }
   .empty { color:var(--muted); font-size:13px; padding:16px; text-align:center; border:1.5px dashed var(--line); border-radius:9px; }
   .toast { position:fixed; bottom:22px; right:22px; background:var(--navy); color:#fff; padding:11px 18px;
-    border-radius:9px; font-size:13px; opacity:0; transform:translateY(8px); transition:.25s; pointer-events:none; }
+    border-radius:9px; font-size:13px; opacity:0; transform:translateY(8px); transition:.25s; pointer-events:none; max-width:420px; z-index:50; }
   .toast.show { opacity:1; transform:translateY(0); }
+  .toast.err { background:var(--danger); }
   .note { font-size:12px; color:var(--muted); background:var(--surface2); border-radius:7px; padding:9px 11px; margin-top:8px; line-height:1.5; }
-  .entry-scroll { max-height:480px; overflow-y:auto; padding-right:15px; }
-  .savebar { position:sticky; bottom:0; padding:14px 0; margin-top:24px; }
+  .entry-scroll { max-height:480px; overflow-y:auto; padding-right:6px; }
+  .savebar { position:sticky; bottom:0; background:var(--surface); border-top:1px solid var(--line); padding:14px 0; margin-top:24px; }
+  .badge { display:inline-block; background:var(--danger-bg); color:var(--danger); font-size:11.5px; font-weight:700;
+    padding:2px 8px; border-radius:999px; margin-left:8px; }
 </style>
 </head>
 <body>
@@ -428,8 +512,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <div class="card">
           <h3>Add event</h3>
           <label>Title</label><input type="text" id="aTitle">
-          <div class="row"><div><label>Date</label><input type="text" id="aDate" placeholder="e.g. 08 April 2026"></div>
-          <div><label>Year</label><select id="aYear"><option value="2025">2025</option><option value="2026" selected>2026</option></select></div></div>
+          <label>Date</label><input type="date" id="aDate">
           <label>Description</label><textarea id="aDesc"></textarea>
           <label>Instagram/Facebook link</label><input type="url" id="aLink">
           <label>Photo</label><input type="file" id="aFile" accept="image/*">
@@ -470,7 +553,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     <section class="panel" id="p-stats">
       <h2>Hero stats</h2>
-      <p class="sub">Loaded directly from your index.html.</p>
+      <p class="sub">Loaded directly from your index.html. You can't add or remove rows here — the count has to match what's on the page, so only the label/value text is editable.</p>
       <div class="card" style="max-width:520px;">
         <h3>Numbers</h3>
         <div id="sForm"></div>
@@ -494,8 +577,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <textarea id="sectionEditor" style="font-family:monospace; font-size:12.5px; white-space:pre; overflow:hidden;" oninput="autoGrow(this)"></textarea>
         <div class="btnrow">
           <button class="btn btn-p" onclick="saveSection()">Save this section</button>
+          <span id="sectionStatus" style="font-size:13px; color:var(--muted);"></span>
         </div>
-        <div class="note">This replaces everything between the section's opening and closing tags. A timestamped backup of the whole file is made first.</div>
+        <div class="note">This replaces everything between the section's opening and closing tags. A timestamped backup of the whole file is made first, and the save is validated (tag balance) before anything is written.</div>
       </div>
     </section>
 
@@ -509,8 +593,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <textarea id="fullFileEditor" style="font-family:monospace; font-size:12px; white-space:pre; margin-top:12px; overflow:hidden;" oninput="autoGrow(this)"></textarea>
         <div class="btnrow">
           <button class="btn btn-p" onclick="saveFullFile()">Save entire file</button>
+          <span id="fullFileStatus" style="font-size:13px; color:var(--muted);"></span>
         </div>
-        <div class="note">This overwrites the whole file with exactly what's in the box below, no safety checks beyond a backup. Double check it before saving — this is the "edit literally anything" option.</div>
+        <div class="note">This overwrites the whole file with exactly what's in the box below. A backup is made and the result is validated (tag balance, required containers still present) before anything is written — if validation fails, your file is left untouched. This is still the "edit literally anything" option, so double-check it regardless.</div>
       </div>
     </section>
 
@@ -524,6 +609,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
 <script>
 let state = { activities: [], units: [], stats: [] };
+let originalStatsCount = 0;
 
 document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.tabbtn').forEach(x=>x.classList.remove('active'));
@@ -535,12 +621,41 @@ document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>{
 }));
 
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+function toast(m, isErr){ const t=document.getElementById('toast'); t.textContent=m; t.classList.toggle('err', !!isErr); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), isErr ? 4000 : 1800); }
 function autoGrow(el){ el.style.height = 'auto'; el.style.height = (el.scrollHeight + 4) + 'px'; }
 
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function formatDateDisplay(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d} ${MONTHS[parseInt(m,10)-1]} ${y}`;
+}
+function parseDisplayDateToISO(str){
+  const m = (str||'').match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  if(!m) return '';
+  const monthIdx = MONTHS.findIndex(mo => mo.toLowerCase() === m[2].toLowerCase());
+  if(monthIdx === -1) return '';
+  return `${m[3]}-${String(monthIdx+1).padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+}
+
+async function safeFetch(url, opts){
+  try {
+    const r = await fetch(url, opts);
+    let j;
+    try { j = await r.json(); }
+    catch(e) { throw new Error('Server did not return valid JSON (HTTP ' + r.status + ')'); }
+    if(!r.ok && j.ok === undefined) j.ok = false;
+    return j;
+  } catch(e) {
+    return { ok:false, error: 'Could not reach the local server — is admin_server.py still running? (' + e.message + ')' };
+  }
+}
+
 async function loadState(){
-  const r = await fetch('/api/state');
-  state = await r.json();
+  const j = await safeFetch('/api/state');
+  if(j.ok === false){ toast('Could not load current content: ' + j.error, true); return; }
+  state = j;
+  originalStatsCount = (state.stats || []).length;
   renderActivities(); renderUnits(); renderStats();
 }
 
@@ -549,9 +664,8 @@ async function uploadFile(inputEl, dir){
   const fd = new FormData();
   fd.append('file', inputEl.files[0]);
   fd.append('dir', dir);
-  const r = await fetch('/api/upload', {method:'POST', body: fd});
-  const j = await r.json();
-  if(!j.ok){ toast('Upload failed: '+j.error); return null; }
+  const j = await safeFetch('/api/upload', {method:'POST', body: fd});
+  if(!j.ok){ toast('Upload failed: '+j.error, true); return null; }
   return j.filename;
 }
 
@@ -561,14 +675,17 @@ let editingActivity = null; // index currently being edited, or null
 async function addActivity(){
   const title = document.getElementById('aTitle').value.trim();
   if(!title){ toast('Add a title first.'); return; }
+  const iso = document.getElementById('aDate').value;
+  if(!iso){ toast('Pick a date first.'); return; }
   const fileInput = document.getElementById('aFile');
   let filename = editingActivity !== null ? state.activities[editingActivity].img : 'placeholder.jpg';
   if(fileInput.files && fileInput.files[0]){
-    filename = await uploadFile(fileInput, 'Act_Images') || filename;
+    const uploaded = await uploadFile(fileInput, 'Act_Images');
+    if(uploaded) filename = uploaded;
   }
   const entry = {
-    title, date: document.getElementById('aDate').value.trim(),
-    year: document.getElementById('aYear').value,
+    title,
+    date: formatDateDisplay(iso),
     desc: document.getElementById('aDesc').value.trim(),
     link: document.getElementById('aLink').value.trim(),
     img: filename
@@ -586,8 +703,7 @@ async function addActivity(){
 function editActivity(i){
   const a = state.activities[i];
   document.getElementById('aTitle').value = a.title;
-  document.getElementById('aDate').value = a.date;
-  document.getElementById('aYear').value = a.year;
+  document.getElementById('aDate').value = parseDisplayDateToISO(a.date);
   document.getElementById('aDesc').value = a.desc;
   document.getElementById('aLink').value = a.link;
   document.getElementById('aFile').value = '';
@@ -602,7 +718,12 @@ function cancelActivityEdit(){
   document.getElementById('aAddBtn').textContent = 'Add event';
   document.getElementById('aCancelBtn').style.display = 'none';
 }
-function delA(i){ state.activities.splice(i,1); if(editingActivity===i) cancelActivityEdit(); renderActivities(); }
+function delA(i){
+  if(!confirm('Remove "' + state.activities[i].title + '" from the list? (Nothing is saved until you hit Save.)')) return;
+  state.activities.splice(i,1);
+  if(editingActivity===i) cancelActivityEdit();
+  renderActivities();
+}
 
 let dragIndex = null;
 function renderActivities(){
@@ -616,7 +737,7 @@ function renderActivities(){
       ondrop="dropActivity(${i});">
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="cursor:grab; color:var(--muted);">&#9776;</span>
-        <div><b>${esc(a.title)}</b><span>${esc(a.date)} · ${a.year}</span></div>
+        <div><b>${esc(a.title)}</b><span>${esc(a.date)}</span></div>
       </div>
       <div class="acts"><button onclick="editActivity(${i})" title="Edit">&#9998;</button><button onclick="delA(${i})" title="Delete">&times;</button></div></div>`).join('')
     : '<div class="empty">No events.</div>';
@@ -638,7 +759,8 @@ async function addUnit(){
   const fileInput = document.getElementById('uFile');
   let filename = editingUnit !== null ? state.units[editingUnit].logo : 'placeholder-logo.svg';
   if(fileInput.files && fileInput.files[0]){
-    filename = await uploadFile(fileInput, 'Unit_Images') || filename;
+    const uploaded = await uploadFile(fileInput, 'Unit_Images');
+    if(uploaded) filename = uploaded;
   }
   const entry = {
     name, tag: document.getElementById('uTag').value.trim(),
@@ -679,7 +801,12 @@ function cancelUnitEdit(){
   document.getElementById('uAddBtn').textContent = 'Add unit';
   document.getElementById('uCancelBtn').style.display = 'none';
 }
-function delU(i){ state.units.splice(i,1); if(editingUnit===i) cancelUnitEdit(); renderUnits(); }
+function delU(i){
+  if(!confirm('Remove "' + state.units[i].name + '" from the list? (Nothing is saved until you hit Save.)')) return;
+  state.units.splice(i,1);
+  if(editingUnit===i) cancelUnitEdit();
+  renderUnits();
+}
 
 let dragUnitIndex = null;
 function renderUnits(){
@@ -717,21 +844,23 @@ function renderStats(){
 
 /* ---- save ---- */
 async function saveAll(){
+  const summary = `${state.activities.length} activities, ${state.units.length} units, ${state.stats.length} stats`;
+  if(!confirm('Save to index.html now?\\n\\n' + summary + '\\n\\nA timestamped backup will be made first.')) return;
   document.getElementById('saveStatus').textContent = 'Saving...';
-  const r = await fetch('/api/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(state)});
-  const j = await r.json();
+  const j = await safeFetch('/api/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(state)});
   if(j.ok){
     document.getElementById('saveStatus').textContent = 'Saved to ' + j.path + ' (a timestamped .bak file was also created)';
     toast('index.html updated');
   } else {
-    document.getElementById('saveStatus').textContent = 'Error: ' + j.error;
+    document.getElementById('saveStatus').textContent = '';
+    toast('Not saved — ' + j.error, true);
   }
 }
 
 /* ---- any section ---- */
 async function refreshSections(){
-  const r = await fetch('/api/sections');
-  const list = await r.json();
+  const list = await safeFetch('/api/sections');
+  if(list.ok === false){ toast('Could not load section list: ' + list.error, true); return; }
   const sel = document.getElementById('sectionPicker');
   sel.innerHTML = list.map(s => `<option value="${esc(s.id)}">${esc(s.label)} (#${esc(s.id)})</option>`).join('');
   if(list.length) loadSection();
@@ -739,8 +868,7 @@ async function refreshSections(){
 async function loadSection(){
   const id = document.getElementById('sectionPicker').value;
   if(!id) return;
-  const r = await fetch('/api/section/' + encodeURIComponent(id));
-  const j = await r.json();
+  const j = await safeFetch('/api/section/' + encodeURIComponent(id));
   const el = document.getElementById('sectionEditor');
   el.value = j.ok ? j.html : ('Error: ' + j.error);
   autoGrow(el);
@@ -748,34 +876,34 @@ async function loadSection(){
 async function saveSection(){
   const id = document.getElementById('sectionPicker').value;
   if(!id) return;
+  if(!confirm('Save changes to section "' + id + '"? A backup will be made first.')) return;
   const htmlVal = document.getElementById('sectionEditor').value;
-  const r = await fetch('/api/section/' + encodeURIComponent(id), {
+  const j = await safeFetch('/api/section/' + encodeURIComponent(id), {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({html: htmlVal})
   });
-  const j = await r.json();
-  toast(j.ok ? 'Section #' + id + ' saved to index.html' : 'Error: ' + j.error);
+  document.getElementById('sectionStatus').textContent = j.ok ? ('Saved (backup created)') : '';
+  toast(j.ok ? 'Section #' + id + ' saved to index.html' : 'Not saved — ' + j.error, !j.ok);
 }
 
 /* ---- full file ---- */
 async function loadFullFile(){
-  const r = await fetch('/api/fullfile');
-  const j = await r.json();
+  const j = await safeFetch('/api/fullfile');
   const el = document.getElementById('fullFileEditor');
   el.value = j.ok ? j.html : ('Error: ' + j.error);
   autoGrow(el);
 }
 async function saveFullFile(){
-  if(!confirm('This overwrites the entire index.html with what is in the box. A backup will be made, but double check you have not broken anything. Continue?')) return;
+  if(!confirm('This overwrites the entire index.html with what is in the box. A backup will be made, and the result is checked for balanced tags before writing, but double check you have not broken anything logically. Continue?')) return;
   const htmlVal = document.getElementById('fullFileEditor').value;
-  const r = await fetch('/api/fullfile', {
+  const j = await safeFetch('/api/fullfile', {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({html: htmlVal})
   });
-  const j = await r.json();
-  toast(j.ok ? 'Whole file saved' : 'Error: ' + j.error);
+  document.getElementById('fullFileStatus').textContent = j.ok ? 'Saved (backup created)' : '';
+  toast(j.ok ? 'Whole file saved' : 'Not saved — ' + j.error, !j.ok);
 }
 
 loadState();
-refreshSections();sa
+refreshSections();
 </script>
 </body>
 </html>
