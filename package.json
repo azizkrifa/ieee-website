@@ -1,0 +1,23 @@
+{
+  "name": "ieee-website",
+  "version": "1.0.0",
+  "description": "IEEE FSM Student Branch website",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"No tests specified\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azizkrifa/ieee-website.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/azizkrifa/ieee-website/issues"
+  },
+  "homepage": "https://github.com/azizkrifa/ieee-website#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
