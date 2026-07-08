@@ -29,6 +29,7 @@ from werkzeug.utils import secure_filename
 INDEX_HTML_PATH = "index.html"       # path to your site's index.html
 ACTIVITIES_IMG_DIR = "Act_Images"    # folder used by <img src="Act_Images/...">
 UNITS_IMG_DIR = "Unit_Images"        # folder for unit logos (adjust if yours differs)
+IMG_DIR = "Images"                   # folder for other images (not used by this tool, but git push includes it)
 REPO_DIR = "."                       # folder containing your git repo — usually same folder as this script
 PORT = 5055
 DEFAULT_YEAR = str(datetime.datetime.now().year)
@@ -475,11 +476,11 @@ def api_save_fullfile():
 
 # ============================================================
 # Git — add/commit/push scoped to just the files this tool touches
-# (index.html + the two image folders), never a blanket `-A`, so
+# (index.html + the three image folders), never a blanket `-A`, so
 # nothing unrelated in your repo gets swept in by accident.
 # ============================================================
 def tracked_paths():
-    return [p for p in (INDEX_HTML_PATH, ACTIVITIES_IMG_DIR, UNITS_IMG_DIR) if os.path.exists(p)]
+    return [p for p in (INDEX_HTML_PATH, ACTIVITIES_IMG_DIR, UNITS_IMG_DIR, IMG_DIR) if os.path.exists(p)]
 
 
 def run_git(args):
@@ -517,7 +518,7 @@ def api_git_push():
 
         paths = tracked_paths()
         if not paths:
-            return jsonify({"ok": False, "error": "None of the configured paths exist — check INDEX_HTML_PATH/ACTIVITIES_IMG_DIR/UNITS_IMG_DIR at the top of admin_server.py.", "log": ""}), 400
+            return jsonify({"ok": False, "error": "None of the configured paths exist — check INDEX_HTML_PATH/ACTIVITIES_IMG_DIR/UNITS_IMG_DIR/IMG_DIR at the top of admin_server.py.", "log": ""}), 400
 
         code, out, err = run_git(["add", "--"] + paths)
         log.append(f"$ git add -- {' '.join(paths)}\n{out}{err}".strip())
@@ -626,7 +627,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <h3>Add event</h3>
           <label>Title</label><input type="text" id="aTitle">
           <label>Date</label><input type="date" id="aDate">
-          <label>Description</label><textarea id="aDesc"></textarea>
+          <label>Description</label><textarea id="aDesc" style="height: 96px;"></textarea>
           <label>Instagram/Facebook link</label><input type="url" id="aLink">
           <label>Photo</label><input type="file" id="aFile" accept="image/*">
           <div class="note">Uploads straight into your <code>Act_Images/</code> folder when you click Add.</div>
@@ -637,6 +638,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <h3>Current events (<span id="aCount">0</span>)</h3>
           <div class="entry-scroll" id="aList"></div>
         </div>
+      </div>
+      <div class="savebar">
+          <button class="btn btn-p" onclick="saveAll()">Save changes to index.html</button>
+          <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
       </div>
     </section>
 
@@ -662,6 +667,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <div class="entry-scroll" id="uList"></div>
         </div>
       </div>
+      <div class="savebar">
+        <button class="btn btn-p" onclick="saveAll()">Save changes to index.html</button>
+        <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
+     </div>
     </section>
 
     <section class="panel" id="p-stats">
@@ -671,6 +680,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <h3>Numbers</h3>
         <div id="sForm"></div>
       </div>
+      <div class="savebar">
+        <button class="btn btn-p" onclick="saveAll()">Save changes to index.html</button>
+        <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
+     </div>
     </section>
 
     <section class="panel" id="p-sections">
@@ -694,6 +707,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         </div>
         <div class="note">This replaces everything between the section's opening and closing tags. A timestamped backup of the whole file is made first, and the save is validated (tag balance) before anything is written.</div>
       </div>
+      <div class="savebar">
+        <button class="btn btn-p" onclick="saveAll()">Save changes to index.html</button>
+        <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
+      </div>
     </section>
 
     <section class="panel" id="p-fullfile">
@@ -710,6 +727,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         </div>
         <div class="note">This overwrites the whole file with exactly what's in the box below. A backup is made and the result is validated (tag balance, required containers still present) before anything is written — if validation fails, your file is left untouched. This is still the "edit literally anything" option, so double-check it regardless.</div>
       </div>
+      <div class="savebar">
+        <button class="btn btn-p" onclick="saveAll()" style="position:relative;">Save changes to index.html</button>
+        <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
+     </div>
     </section>
 
     <section class="panel" id="p-publish">
@@ -725,23 +746,22 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <label style="margin-top:20px;">Commit message</label>
         <textarea id="commitMsg" placeholder="" style="min-height:70px;"></textarea>
 
+        <div class="note">Only <code>index.html</code>, <code>Act_Images/</code>, <code>Unit_Images/</code> and <code>Images/</code> are staged — never a blanket "add everything," so nothing else in your repo gets swept in.</div>
+
         <div class="btnrow">
           <button class="btn btn-p" onclick="commitAndPush()">Commit &amp; push</button>
           <span id="pushStatus" style="font-size:13px; color:var(--muted);"></span>
         </div>
-        <div class="note">Only <code>index.html</code>, <code>Act_Images/</code>, and <code>Unit_Images/</code> are staged — never a blanket "add everything," so nothing else in your repo gets swept in.</div>
 
         <div id="gitLog" style="display:none;">
           <label style="margin-top:16px;">Command output</label>
           <textarea readonly style="min-height:160px; font-family:var(--mono); font-size:12px; background:#0D1117; color:#9FE3A0; white-space:pre; overflow:auto;" id="gitLogText"></textarea>
         </div>
       </div>
+      <div class="savebar">
+         <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
+      </div>
     </section>
-
-    <div class="savebar">
-      <button class="btn btn-p" onclick="saveAll()">Save changes to index.html</button>
-      <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
-    </div>
   </main>
 </div>
 <div class="toast" id="toast"></div>
@@ -1051,7 +1071,7 @@ async function checkGitStatus(){
   const j = await safeFetch('/api/git/status');
   if(j.ok === false){ box.textContent = 'Could not check status: ' + j.error; return; }
   if(j.clean){
-    box.textContent = 'No changes in index.html, Act_Images/, or Unit_Images/ compared to the last commit.';
+    box.textContent = 'No changes compared to the last commit.';
   } else {
     box.innerHTML = '<b>' + j.changed.length + ' changed file(s):</b><br>' + j.changed.map(esc).join('<br>');
   }
