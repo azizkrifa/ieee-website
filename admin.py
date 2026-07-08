@@ -19,6 +19,7 @@ import re
 import html as html_lib
 import shutil
 import datetime
+import subprocess
 from flask import Flask, request, jsonify, Response
 from werkzeug.utils import secure_filename
 
@@ -28,6 +29,7 @@ from werkzeug.utils import secure_filename
 INDEX_HTML_PATH = "index.html"       # path to your site's index.html
 ACTIVITIES_IMG_DIR = "Act_Images"    # folder used by <img src="Act_Images/...">
 UNITS_IMG_DIR = "Unit_Images"        # folder for unit logos (adjust if yours differs)
+REPO_DIR = "."                       # folder containing your git repo — usually same folder as this script
 PORT = 5055
 DEFAULT_YEAR = str(datetime.datetime.now().year)
 
@@ -265,7 +267,7 @@ def parse_stats(html):
 def build_activity_block(a):
     date = a.get("date", "")
     year = year_from_date_string(date, fallback=a.get("year", DEFAULT_YEAR))
-    return f'''<div class="tl-item" data-year="{esc(year)}">
+    return f'''          <div class="tl-item" data-year="{esc(year)}">
             <div class="tl-date">{esc(date)}</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -471,6 +473,82 @@ def api_save_fullfile():
         return jsonify({"ok": False, "error": f"Unexpected error: {e}"}), 500
 
 
+# ============================================================
+# Git — add/commit/push scoped to just the files this tool touches
+# (index.html + the two image folders), never a blanket `-A`, so
+# nothing unrelated in your repo gets swept in by accident.
+# ============================================================
+def tracked_paths():
+    return [p for p in (INDEX_HTML_PATH, ACTIVITIES_IMG_DIR, UNITS_IMG_DIR) if os.path.exists(p)]
+
+
+def run_git(args):
+    """Run a git command as a real argument list (never a shell string),
+    so nothing typed into the commit message box can be interpreted as
+    a shell command. Returns (returncode, stdout, stderr)."""
+    result = subprocess.run(
+        ["git"] + args, cwd=REPO_DIR, capture_output=True, text=True
+    )
+    return result.returncode, result.stdout, result.stderr
+
+
+@app.route("/api/git/status")
+def api_git_status():
+    try:
+        code, out, err = run_git(["status", "--porcelain", "--"] + tracked_paths())
+        if code != 0:
+            return jsonify({"ok": False, "error": err.strip() or "git status failed — is this folder actually a git repository?"})
+        changed = [line for line in out.splitlines() if line.strip()]
+        return jsonify({"ok": True, "changed": changed, "clean": len(changed) == 0})
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "git executable not found — is Git installed and on your PATH?"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/git/push", methods=["POST"])
+def api_git_push():
+    log = []
+    try:
+        data = request.get_json()
+        message = (data.get("message") or "").strip()
+        if not message:
+            return jsonify({"ok": False, "error": "Write a commit message first.", "log": ""}), 400
+
+        paths = tracked_paths()
+        if not paths:
+            return jsonify({"ok": False, "error": "None of the configured paths exist — check INDEX_HTML_PATH/ACTIVITIES_IMG_DIR/UNITS_IMG_DIR at the top of admin_server.py.", "log": ""}), 400
+
+        code, out, err = run_git(["add", "--"] + paths)
+        log.append(f"$ git add -- {' '.join(paths)}\n{out}{err}".strip())
+        if code != 0:
+            return jsonify({"ok": False, "error": "git add failed.", "log": "\n\n".join(log)}), 500
+
+        code, out, err = run_git(["diff", "--cached", "--name-only"])
+        if not out.strip():
+            return jsonify({"ok": False, "error": "Nothing to commit — index.html and the image folders match what's already committed.", "log": "\n\n".join(log)}), 400
+
+        code, out, err = run_git(["commit", "-m", message])
+        log.append(f"$ git commit -m \"{message}\"\n{out}{err}".strip())
+        if code != 0:
+            return jsonify({"ok": False, "error": "git commit failed.", "log": "\n\n".join(log)}), 500
+
+        code, out, err = run_git(["push"])
+        log.append(f"$ git push\n{out}{err}".strip())
+        if code != 0:
+            return jsonify({
+                "ok": False,
+                "error": "Committed locally, but git push failed — you can retry with `git push` yourself from a terminal.",
+                "log": "\n\n".join(log)
+            }), 500
+
+        return jsonify({"ok": True, "log": "\n\n".join(log)})
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "git executable not found — is Git installed and on your PATH?", "log": "\n\n".join(log)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}", "log": "\n\n".join(log)})
+
+
 @app.route("/")
 def index():
     return Response(DASHBOARD_HTML, mimetype="text/html")
@@ -523,7 +601,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   .toast.err { background:var(--danger); }
   .note { font-size:12px; color:var(--muted); background:var(--surface2); border-radius:7px; padding:9px 11px; margin-top:8px; line-height:1.5; }
   .entry-scroll { max-height:480px; overflow-y:auto; padding-right:6px; }
-  .savebar { position:sticky; bottom:0; background:var(--surface); border-top:1px solid var(--line); padding:14px 0; margin-top:24px; }
+  .savebar { position:sticky; bottom:0; padding:14px 0; margin-top:24px; }
   .badge { display:inline-block; background:var(--danger-bg); color:var(--danger); font-size:11.5px; font-weight:700;
     padding:2px 8px; border-radius:999px; margin-left:8px; }
 </style>
@@ -537,6 +615,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <button class="tabbtn" data-tab="stats">Hero Stats</button>
     <button class="tabbtn" data-tab="sections">Any Section</button>
     <button class="tabbtn" data-tab="fullfile">Full File</button>
+    <button class="tabbtn" data-tab="publish">Publish</button>
   </nav>
   <main>
     <section class="panel active" id="p-activities">
@@ -633,6 +712,32 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       </div>
     </section>
 
+    <section class="panel" id="p-publish">
+      <h2>Publish</h2>
+      <p class="sub">Runs git add / commit / push for index.html and your image folders — nothing else in the repo. Nothing here happens automatically; you always write the commit message and click the button.</p>
+      <div class="card" style="max-width:640px;">
+        <h3>Changed files</h3>
+        <div id="gitStatusBox" class="note" style="margin-top:0;">Checking...</div>
+        <div class="btnrow" style="margin-top:10px;">
+          <button class="btn btn-g" onclick="checkGitStatus()">Refresh status</button>
+        </div>
+
+        <label style="margin-top:20px;">Commit message</label>
+        <textarea id="commitMsg" placeholder="" style="min-height:70px;"></textarea>
+
+        <div class="btnrow">
+          <button class="btn btn-p" onclick="commitAndPush()">Commit &amp; push</button>
+          <span id="pushStatus" style="font-size:13px; color:var(--muted);"></span>
+        </div>
+        <div class="note">Only <code>index.html</code>, <code>Act_Images/</code>, and <code>Unit_Images/</code> are staged — never a blanket "add everything," so nothing else in your repo gets swept in.</div>
+
+        <div id="gitLog" style="display:none;">
+          <label style="margin-top:16px;">Command output</label>
+          <textarea readonly style="min-height:160px; font-family:var(--mono); font-size:12px; background:#0D1117; color:#9FE3A0; white-space:pre; overflow:auto;" id="gitLogText"></textarea>
+        </div>
+      </div>
+    </section>
+
     <div class="savebar">
       <button class="btn btn-p" onclick="saveAll()">Save changes to index.html</button>
       <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
@@ -652,6 +757,7 @@ document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>{
   document.getElementById('p-'+b.dataset.tab).classList.add('active');
   if(b.dataset.tab === 'sections') refreshSections();
   if(b.dataset.tab === 'fullfile') loadFullFile();
+  if(b.dataset.tab === 'publish') checkGitStatus();
 }));
 
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -936,6 +1042,36 @@ async function saveFullFile(){
   });
   document.getElementById('fullFileStatus').textContent = j.ok ? 'Saved (backup created)' : '';
   toast(j.ok ? 'Whole file saved' : 'Not saved — ' + j.error, !j.ok);
+}
+
+/* ---- publish (git) ---- */
+async function checkGitStatus(){
+  const box = document.getElementById('gitStatusBox');
+  box.textContent = 'Checking...';
+  const j = await safeFetch('/api/git/status');
+  if(j.ok === false){ box.textContent = 'Could not check status: ' + j.error; return; }
+  if(j.clean){
+    box.textContent = 'No changes in index.html, Act_Images/, or Unit_Images/ compared to the last commit.';
+  } else {
+    box.innerHTML = '<b>' + j.changed.length + ' changed file(s):</b><br>' + j.changed.map(esc).join('<br>');
+  }
+}
+async function commitAndPush(){
+  const message = document.getElementById('commitMsg').value.trim();
+  if(!message){ toast('Write a commit message first.'); return; }
+  if(!confirm('Commit and push now with message:\\n\\n"' + message + '"\\n\\nThis will run git add, commit, and push for real.')) return;
+  document.getElementById('pushStatus').textContent = 'Working...';
+  const j = await safeFetch('/api/git/push', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message})});
+  if(j.log){
+    document.getElementById('gitLog').style.display = 'block';
+    document.getElementById('gitLogText').value = j.log;
+  }
+  document.getElementById('pushStatus').textContent = j.ok ? 'Pushed successfully.' : '';
+  toast(j.ok ? 'Committed and pushed' : 'Not pushed — ' + j.error, !j.ok);
+  if(j.ok){
+    document.getElementById('commitMsg').value = '';
+    checkGitStatus();
+  }
 }
 
 loadState();
