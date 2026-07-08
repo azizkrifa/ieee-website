@@ -140,6 +140,18 @@ def esc(s):
     return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
+def img_src_of(block, default=""):
+    """Find the src of the first <img> tag in `block`, regardless of what
+    other attributes (id, alt, class, onerror...) come before or after it —
+    unlike a naive '<img src="..."' regex, which silently fails the moment
+    an attribute like id="..." appears first in real markup."""
+    m = re.search(r'<img\b[^>]*>', block, re.S)
+    if not m:
+        return default
+    sm = re.search(r'\bsrc="(.*?)"', m.group(0))
+    return html_lib.unescape(sm.group(1)) if sm else default
+
+
 def year_from_date_string(date_str, fallback=DEFAULT_YEAR):
     """Pull a 4-digit year out of a display date like '08 April 2026' or
     '24 & 25 January 2026'. This is the single source of truth for year —
@@ -206,7 +218,8 @@ def parse_activities(html):
             "title": text_of(r'<h3>(.*?)</h3>', block),
             "desc": text_of(r'<h3>.*?</h3>\s*<p>(.*?)</p>', block),
             "link": text_of(r'<a class="tl-more" href="(.*?)"', block),
-            "img": text_of(r'<img src="(?:' + re.escape(ACTIVITIES_IMG_DIR) + r'/)?(.*?)"', block, "placeholder.jpg"),
+            "img": text_of(r'<img\b[^>]*\bsrc="(?:' + re.escape(ACTIVITIES_IMG_DIR) + r'/)?(.*?)"', block, "placeholder.jpg"),
+            "raw_html": block,
         })
     return items
 
@@ -220,6 +233,7 @@ def parse_units(html):
     for start, end in top_level_blocks(inner, "unit-card"):
         block = inner[start:end]
         color_m = re.search(r'--unit-color:\s*([^;"]+);', block)
+        logo_id_m = re.search(r'<img\b[^>]*\bid="([^"]*)"[^>]*\bsrc="', block) or re.search(r'<img\b[^>]*\bsrc="[^"]*"[^>]*\bid="([^"]*)"', block)
         items.append({
             "name": text_of(r'<h3>(.*?)</h3>', block),
             "tag": text_of(r'<span class="tag">(.*?)</span>', block),
@@ -227,7 +241,9 @@ def parse_units(html):
             "summary": text_of(r'<h3>.*?</h3>\s*<p>(.*?)</p>', block),
             "details": text_of(r'data-details="(.*?)"', block),
             "website": text_of(r'data-website="(.*?)"', block),
-            "logo": text_of(r'<img src="(.*?)"', block, "placeholder-logo.svg"),
+            "logo": text_of(r'<img\b[^>]*\bsrc="(.*?)"', block, "placeholder-logo.svg"),
+            "logo_id": logo_id_m.group(1) if logo_id_m else "",
+            "raw_html": block,
         })
     return items
 
@@ -249,7 +265,7 @@ def parse_stats(html):
 def build_activity_block(a):
     date = a.get("date", "")
     year = year_from_date_string(date, fallback=a.get("year", DEFAULT_YEAR))
-    return f'''          <div class="tl-item" data-year="{esc(year)}">
+    return f'''<div class="tl-item" data-year="{esc(year)}">
             <div class="tl-date">{esc(date)}</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -274,16 +290,34 @@ def build_activity_block(a):
 
 
 def build_unit_block(u):
+    logo_id = u.get("logo_id", "")
+    logo_id_attr = f'id="{esc(logo_id)}" ' if logo_id else ""
     return f'''          <div class="unit-card reveal" style="--unit-color:{esc(u.get("color", "#00629B"))};"
                data-website="{esc(u.get("website", ""))}"
                data-details="{esc(u.get("details", ""))}">
-            <div class="unit-logo-img"><img src="{esc(u.get("logo", "placeholder-logo.svg"))}" alt="{esc(u.get("name", ""))} Logo"
+            <div class="unit-logo-img"><img {logo_id_attr}src="{esc(u.get("logo", "placeholder-logo.svg"))}" alt="{esc(u.get("name", ""))} Logo"
                 style="width: 180px; height: auto; padding: 25px;"
                 onerror="this.style.display='none';"></div>
             <span class="tag">{esc(u.get("tag", ""))}</span>
             <h3>{esc(u.get("name", ""))}</h3>
             <p>{esc(u.get("summary", ""))}</p>
           </div>'''
+
+
+def activity_output_html(a):
+    """Reuse the original block verbatim if this entry was never edited
+    (raw_html still present and truthy) — only rebuild from fields for
+    genuinely new or edited entries. This means anything our parser
+    doesn't capture (an attribute we don't know about, unusual formatting,
+    a future markup change) survives untouched for entries the user
+    didn't actually change, instead of being silently dropped on every save."""
+    raw = a.get("raw_html")
+    return raw if raw else build_activity_block(a)
+
+
+def unit_output_html(u):
+    raw = u.get("raw_html")
+    return raw if raw else build_unit_block(u)
 
 
 def replace_container(html, class_name, new_inner_html):
@@ -364,8 +398,8 @@ def api_save():
         data = request.get_json()
         html = read_index_html()
 
-        activities_html = "\n\n".join(build_activity_block(a) for a in data.get("activities", []))
-        units_html = "\n\n".join(build_unit_block(u) for u in data.get("units", []))
+        activities_html = "\n\n".join(activity_output_html(a) for a in data.get("activities", []))
+        units_html = "\n\n".join(unit_output_html(u) for u in data.get("units", []))
 
         new_html = replace_container(html, "timeline", activities_html)
         new_html = replace_container(new_html, "units-grid", units_html)
@@ -768,7 +802,8 @@ async function addUnit(){
     summary: document.getElementById('uSummary').value.trim(),
     details: document.getElementById('uDetails').value.trim(),
     website: document.getElementById('uWebsite').value.trim(),
-    logo: filename
+    logo: filename,
+    logo_id: editingUnit !== null ? (state.units[editingUnit].logo_id || '') : ''
   };
   if(editingUnit !== null){
     state.units[editingUnit] = entry;
@@ -851,6 +886,7 @@ async function saveAll(){
   if(j.ok){
     document.getElementById('saveStatus').textContent = 'Saved to ' + j.path + ' (a timestamped .bak file was also created)';
     toast('index.html updated');
+    loadState();
   } else {
     document.getElementById('saveStatus').textContent = '';
     toast('Not saved — ' + j.error, true);
