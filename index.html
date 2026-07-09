@@ -1111,7 +1111,8 @@
       padding: 26px 20px;
       margin-top: 10px;
       text-align: center;
-      transition: transform .35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .35s ease, border-color .35s ease;
+      cursor: pointer;
+      transition: transform .3s ease, box-shadow .3s ease;
     }
 
     .partner-card:hover {
@@ -1137,6 +1138,12 @@
       height: 100%;
       object-fit: contain;
       padding: 12px;
+      transition: transform .35s ease;
+      transform-origin: center;
+    }
+
+    .partner-card:hover .partner-logo img {
+      transform: scale(1.20);
     }
 
     .partner-logo .partner-fallback {
@@ -1165,11 +1172,33 @@
       line-height: 1.45;
     }
 
+    .partner-panel-divider {
+      width: 100%;
+      border: none;
+      border-top: 1px solid #5F7288;
+      margin: 1.25rem 0;
+      opacity: 0.6;
+    }
+
+    #partnerPanelLogo.ithouse-card img {
+      height: 150px;
+      width: auto;
+    }
+
+    #partnerPanelLogo.funtopia-card img {
+      margin-bottom: 20px;
+    }
+
     html:not([data-theme="dark"]) .tarantinoo-card img,
     html:not([data-theme="dark"]) .watc-card img,
     html:not([data-theme="dark"]) .ithouse-card img,
     html:not([data-theme="dark"]) .funtopia-card img,
-    html:not([data-theme="dark"]) .castello-card img {
+    html:not([data-theme="dark"]) .castello-card img,
+    html:not([data-theme="dark"]) #partnerPanelLogo.tarantinoo-card img,
+    html:not([data-theme="dark"]) #partnerPanelLogo.watc-card img,
+    html:not([data-theme="dark"]) #partnerPanelLogo.ithouse-card img,
+    html:not([data-theme="dark"]) #partnerPanelLogo.funtopia-card img,
+    html:not([data-theme="dark"]) #partnerPanelLogo.castello-card img {
       filter: brightness(0);
     }
 
@@ -1177,7 +1206,12 @@
     html[data-theme="dark"] .watc-card img,
     html[data-theme="dark"] .ithouse-card img,
     html[data-theme="dark"] .funtopia-card img,
-    html[data-theme="dark"] .castello-card img {
+    html[data-theme="dark"] .castello-card img,
+    html[data-theme="dark"] #partnerPanelLogo.tarantinoo-card img,
+    html[data-theme="dark"] #partnerPanelLogo.watc-card img,
+    html[data-theme="dark"] #partnerPanelLogo.ithouse-card img,
+    html[data-theme="dark"] #partnerPanelLogo.funtopia-card img,
+    html[data-theme="dark"] #partnerPanelLogo.castello-card img {
       filter: none;
     }
 
@@ -2927,7 +2961,8 @@
         </div>
 
         <div class="partners-grid">
-          <article class="partner-card reveal">
+          <article class="partner-card reveal" data-website="https://fsm.rnu.tn"
+            data-details="The Faculty of Sciences of Monastir (FSM) is the academic home of our student branch, providing resources, mentorship, and a platform for students to engage in technical and professional development activities.">
             <div class="partner-logo">
               <img src="Logos/fsm.png" alt="FSM Partner Logo"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2935,7 +2970,8 @@
             </div>
             <h3>Faculty of Sciences of Monastir</h3>
           </article>
-          <article class="partner-card reveal">
+          <article class="partner-card reveal" data-website="https://ieee.tn/"
+            data-details="IEEE Tunisia Section is the local chapter of the global IEEE organization, providing support and resources to our student branch.">
             <div class="partner-logo">
               <img src="Logos/ieee-section.png" alt="IEEE Tunisia Partner Logo"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2943,7 +2979,9 @@
             </div>
             <h3>IEEE Tunisia Section</h3>
           </article>
-          <article class="partner-card reveal tarantinoo-card">
+          <article class="partner-card reveal tarantinoo-card"
+            data-website="https://www.instagram.com/tarantino.monastir/"
+            data-details="Tarantinoo Café has been one of IEEE FSM SB's trusted partners, supporting our events and providing exclusive offers for our members.">
             <div class="partner-logo">
               <img src="Logos/tarantinoo.png" alt="Tarantinoo Partner Logo"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2951,7 +2989,8 @@
             </div>
             <h3>Tarantinoo Cafe</h3>
           </article>
-          <article class="partner-card reveal funtopia-card">
+          <article class="partner-card reveal funtopia-card" data-website="https://www.instagram.com/funtopia.game/"
+            data-details="Funtopia is a gaming startup and valued partner of IEEE FSM SB, supporting our community by promoting innovation, creativity, and engaging interactive experiences.">
             <div class="partner-logo">
               <img src="Logos/funtopia.png" alt="Funtopia Partner Logo"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2960,7 +2999,8 @@
             <h3>Funtopia</h3>
           </article>
 
-          <article class="partner-card reveal watc-card">
+          <article class="partner-card reveal watc-card" data-website="https://www.instagram.com/wearetechnologycenter/"
+            data-details="We Are Technology Center (WATC) is a nationally recognized training center based in Monastir, supporting innovation and technical skill development.">
             <div class="partner-logo">
               <img src="Logos/watc.png" alt="WATC Partner Logo"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2969,7 +3009,8 @@
             <h3>We Are Technology Center</h3>
           </article>
 
-          <article class="partner-card reveal ithouse-card">
+          <article class="partner-card reveal ithouse-card" data-website="https://www.instagram.com/ithouse.tn/"
+            data-details="IT House is a Tunisian IT group providing technology services and internship opportunities for students.">
             <div class="partner-logo">
               <img src="Logos/ithouse.png" alt="IT House Partner Logo"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -2978,7 +3019,9 @@
             <h3>IT House</h3>
           </article>
 
-          <article class="partner-card reveal castello-card">
+          <article class="partner-card reveal castello-card"
+            data-website="https://www.instagram.com/castello.salon.de.the/"
+            data-details="Castello is a welcoming café that supports our student initiatives by providing a comfortable space for meetings, networking, and collaboration.">
             <div class="partner-logo">
               <img src="Logos/castello.png" alt="Castello Partner Logo"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3429,12 +3472,30 @@
       <button class="unit-panel-close" id="unitPanelClose" aria-label="Close">&times;</button>
       <div class="unit-panel-body">
         <div class="unit-panel-logo" id="unitPanelLogo"></div>
+        <hr class="partner-panel-divider">
         <span class="unit-panel-tag" id="unitPanelTag"></span>
         <h3 id="unitPanelTitle"></h3>
         <p class="unit-panel-summary" id="unitPanelSummary"></p>
         <p class="unit-panel-details" id="unitPanelDetails"></p>
         <a class="unit-panel-visit" id="unitPanelVisit" href="#" target="_blank" rel="noopener">
           Visit website →
+        </a>
+      </div>
+    </aside>
+
+    <div class="unit-overlay" id="partnerOverlay"></div>
+
+    <aside class="unit-panel" id="partnerPanel">
+      <div class="unit-panel-top" id="partnerPanelTop"></div>
+      <button class="unit-panel-close" id="partnerPanelClose">&times;</button>
+      <div class="unit-panel-body">
+        <div class="unit-panel-logo" id="partnerPanelLogo"></div>
+        <hr class="partner-panel-divider">
+        <h3 id="partnerPanelTitle"></h3>
+        <p class="unit-panel-summary" id="partnerPanelSummary"></p>
+        <p class="unit-panel-details" id="partnerPanelDetails"></p>
+        <a class="unit-panel-visit" id="partnerPanelVisit" target="_blank">
+          Visit →
         </a>
       </div>
     </aside>
@@ -3985,7 +4046,92 @@
       });
     })();
 
+    (function () {
 
+      const cards = document.querySelectorAll('.partner-card');
+
+      const overlay = document.getElementById('partnerOverlay');
+      const panel = document.getElementById('partnerPanel');
+
+      const top = document.getElementById('partnerPanelTop');
+      const logo = document.getElementById('partnerPanelLogo');
+      const tag = document.getElementById('partnerPanelTag');
+      const title = document.getElementById('partnerPanelTitle');
+      const summary = document.getElementById('partnerPanelSummary');
+      const details = document.getElementById('partnerPanelDetails');
+      const visit = document.getElementById('partnerPanelVisit');
+
+      const closeBtn = document.getElementById('partnerPanelClose');
+
+      function openPanel(card) {
+
+        const logoElement = card.querySelector('.partner-logo img');
+
+        // Reset popup logo
+        logo.innerHTML = "";
+
+        // Remove any previous partner class
+        logo.classList.remove(
+          "tarantinoo-card",
+          "watc-card",
+          "ithouse-card",
+          "funtopia-card",
+          "castello-card"
+        );
+
+        // Copy the clicked partner class
+        [
+          "tarantinoo-card",
+          "watc-card",
+          "ithouse-card",
+          "funtopia-card",
+          "castello-card"
+        ].forEach(cls => {
+          if (card.classList.contains(cls)) {
+            logo.classList.add(cls);
+          }
+        });
+
+        // Clone the logo image
+        if (logoElement) {
+          logo.appendChild(logoElement.cloneNode(true));
+        }
+
+        const heading = card.querySelector('h3');
+        const summaryText = card.querySelector('p');
+
+        top.style.background = "var(--ieee-blue)";
+
+        title.textContent = heading ? heading.textContent : "";
+        summary.textContent = summaryText ? summaryText.textContent : "";
+        details.textContent = card.dataset.details || "";
+
+        visit.href = card.dataset.website || "#";
+        visit.style.display = card.dataset.website ? "inline-flex" : "none";
+
+        overlay.classList.add("active");
+        panel.classList.add("active");
+        document.body.style.overflow = "hidden";
+      }
+      function closePanel() {
+
+        overlay.classList.remove("active");
+        panel.classList.remove("active");
+        document.body.style.overflow = "";
+      }
+
+      cards.forEach(card => {
+        card.addEventListener("click", () => openPanel(card));
+      });
+
+      closeBtn.addEventListener("click", closePanel);
+      overlay.addEventListener("click", closePanel);
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closePanel();
+      });
+
+    })();
     (function () {
       if (window.matchMedia('(hover: none), (pointer: coarse)').matches) return;
 
