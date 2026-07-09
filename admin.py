@@ -29,6 +29,8 @@ from werkzeug.utils import secure_filename
 INDEX_HTML_PATH = "index.html"       # path to your site's index.html
 ACTIVITIES_IMG_DIR = "Act_Images"    # folder used by <img src="Act_Images/...">
 UNITS_IMG_DIR = "Unit_Images"        # folder for unit logos (adjust if yours differs)
+TEAM_IMG_DIR = "assets/team"         # folder used by <img src="assets/team/...">
+PARTNERS_IMG_DIR = "Logos"           # folder used by <img src="Logos/...">
 IMG_DIR = "Images"                   # folder for other images (not used by this tool, but git push includes it)
 REPO_DIR = "."                       # folder containing your git repo — usually same folder as this script
 PORT = 5055
@@ -188,7 +190,8 @@ def validate_html(html, context=""):
                 f"<{tag}> tags are unbalanced ({opens} opening vs {closes} closing). "
                 f"Nothing was written; your file is unchanged."
             )
-    for required in ('<div class="timeline">', '<div class="units-grid">', "</html>"):
+    for required in ('<div class="timeline">', '<div class="units-grid">',
+                      '<div class="team-grid">', '<div class="partners-grid">', "</html>"):
         if required not in html:
             raise ValidationError(
                 f"Refused to save{(' — ' + context) if context else ''}: "
@@ -259,6 +262,58 @@ def parse_stats(html):
     return [{"label": html_lib.unescape(l.strip()), "value": html_lib.unescape(v.strip())} for l, v in rows]
 
 
+def href_by_aria_label(block, label, default="#"):
+    """Find the href of the <a> tag whose aria-label matches `label`. Matches
+    the whole opening tag first (bounded by '>' so it can never cross into a
+    neighboring <a> tag), then pulls href out of just that tag — independent
+    of attribute order, same approach as img_src_of above."""
+    m = re.search(r'<a\b[^>]*\baria-label="' + re.escape(label) + r'"[^>]*>', block, re.S)
+    if not m:
+        return default
+    hm = re.search(r'\bhref="(.*?)"', m.group(0))
+    return html_lib.unescape(hm.group(1)) if hm else default
+
+
+def parse_team(html):
+    span = find_container_span(html, "team-grid")
+    if not span:
+        return []
+    inner = html[span[0]:span[1]]
+    items = []
+    for start, end in top_level_blocks(inner, "team-card"):
+        block = inner[start:end]
+        items.append({
+            "name": text_of(r'<div class="name">(.*?)</div>', block),
+            "role": text_of(r'<div class="role">(.*?)</div>', block),
+            "photo": img_src_of(block, f"{TEAM_IMG_DIR}/placeholder.jpg"),
+            "initials": text_of(r'<div class="avatar-fallback"[^>]*>(.*?)</div>', block),
+            "linkedin": href_by_aria_label(block, "LinkedIn"),
+            "instagram": href_by_aria_label(block, "Instagram"),
+            "facebook": href_by_aria_label(block, "Facebook"),
+            "raw_html": block,
+        })
+    return items
+
+
+def parse_partners(html):
+    span = find_container_span(html, "partners-grid")
+    if not span:
+        return []
+    inner = html[span[0]:span[1]]
+    items = []
+    for start, end in top_level_blocks(inner, "partner-card", tag="article"):
+        block = inner[start:end]
+        items.append({
+            "name": text_of(r'<h3>(.*?)</h3>', block),
+            "website": text_of(r'data-website="(.*?)"', block),
+            "details": text_of(r'data-details="(.*?)"', block),
+            "logo": img_src_of(block, "placeholder-logo.svg"),
+            "fallback": text_of(r'<span class="partner-fallback">(.*?)</span>', block),
+            "raw_html": block,
+        })
+    return items
+
+
 # ============================================================
 # Serialization: build HTML blocks from state.
 # Every field is read with .get(..., default) rather than [..],
@@ -323,6 +378,55 @@ def unit_output_html(u):
     return raw if raw else build_unit_block(u)
 
 
+def build_team_block(t):
+    return f'''          <div class="team-card">
+            <div class="team-photo">
+              <img src="{esc(t.get("photo", f"{TEAM_IMG_DIR}/placeholder.jpg"))}" alt="{esc(t.get("role", ""))}"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="avatar-fallback" style="display:none;">{esc(t.get("initials", ""))}</div>
+            </div>
+            <div class="team-overlay">
+              <div class="team-socials">
+                <a href="{esc(t.get("linkedin", "#"))}" target="_blank" aria-label="LinkedIn">
+                  <i class="fab fa-linkedin-in"></i>
+                </a>
+
+                <a href="{esc(t.get("instagram", "#"))}" target="_blank" aria-label="Instagram">
+                  <i class="fab fa-instagram"></i>
+                </a>
+
+                <a href="{esc(t.get("facebook", "#"))}" target="_blank" aria-label="Facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </a>
+              </div>
+              <div class="name">{esc(t.get("name", ""))}</div>
+              <div class="role">{esc(t.get("role", ""))}</div>
+            </div>
+          </div>'''
+
+
+def build_partner_block(p):
+    return f'''          <article class="partner-card reveal" data-website="{esc(p.get("website", ""))}"
+            data-details="{esc(p.get("details", ""))}">
+            <div class="partner-logo">
+              <img src="{esc(p.get("logo", "placeholder-logo.svg"))}" alt="{esc(p.get("name", ""))} Partner Logo"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <span class="partner-fallback">{esc(p.get("fallback", ""))}</span>
+            </div>
+            <h3>{esc(p.get("name", ""))}</h3>
+          </article>'''
+
+
+def team_output_html(t):
+    raw = t.get("raw_html")
+    return raw if raw else build_team_block(t)
+
+
+def partner_output_html(p):
+    raw = p.get("raw_html")
+    return raw if raw else build_partner_block(p)
+
+
 def replace_container(html, class_name, new_inner_html):
     span = find_container_span(html, class_name)
     if not span:
@@ -374,6 +478,8 @@ def api_state():
         return jsonify({
             "activities": parse_activities(html),
             "units": parse_units(html),
+            "team": parse_team(html),
+            "partners": parse_partners(html),
             "stats": parse_stats(html),
         })
     except Exception as e:
@@ -403,9 +509,13 @@ def api_save():
 
         activities_html = "\n\n".join(activity_output_html(a) for a in data.get("activities", []))
         units_html = "\n\n".join(unit_output_html(u) for u in data.get("units", []))
+        team_html = "\n\n".join(team_output_html(t) for t in data.get("team", []))
+        partners_html = "\n\n".join(partner_output_html(p) for p in data.get("partners", []))
 
         new_html = replace_container(html, "timeline", activities_html)
         new_html = replace_container(new_html, "units-grid", units_html)
+        new_html = replace_container(new_html, "team-grid", team_html)
+        new_html = replace_container(new_html, "partners-grid", partners_html)
         new_html = replace_stats(new_html, data.get("stats", []))
 
         write_index_html_safely(new_html, context="structured save")
@@ -480,7 +590,7 @@ def api_save_fullfile():
 # nothing unrelated in your repo gets swept in by accident.
 # ============================================================
 def tracked_paths():
-    return [p for p in (INDEX_HTML_PATH, ACTIVITIES_IMG_DIR, UNITS_IMG_DIR, IMG_DIR) if os.path.exists(p)]
+    return [p for p in (REPO_DIR) if os.path.exists(p)]
 
 
 def run_git(args):
@@ -493,18 +603,95 @@ def run_git(args):
     return result.returncode, result.stdout, result.stderr
 
 
+def parse_git_status_porcelain(out):
+    """Turn `git status --porcelain` output into [{path, status}], so the
+    dashboard can list each changed file with a checkbox instead of a
+    plain block of text."""
+    labels = {
+        "??": "Untracked", " M": "Modified", "M ": "Staged",
+        "MM": "Modified*", "A ": "Added", "AM": "Added*",
+        " D": "Deleted", "D ": "Staged", "R ": "Renamed",
+        "RM": "Renamed*", "C ": "Copied", "UU": "Conflict",
+    }
+    files = []
+    for line in out.splitlines():
+        if not line.strip():
+            continue
+        code, rest = line[:2], line[3:]
+        if " -> " in rest:
+            rest = rest.split(" -> ", 1)[1]
+        path = rest.strip().strip('"')
+        files.append({"path": path, "status": labels.get(code, code.strip() or "Changed")})
+    return files
+
+
 @app.route("/api/git/status")
 def api_git_status():
     try:
         code, out, err = run_git(["status", "--porcelain", "--"] + tracked_paths())
         if code != 0:
             return jsonify({"ok": False, "error": err.strip() or "git status failed — is this folder actually a git repository?"})
-        changed = [line for line in out.splitlines() if line.strip()]
-        return jsonify({"ok": True, "changed": changed, "clean": len(changed) == 0})
+        files = parse_git_status_porcelain(out)
+        return jsonify({"ok": True, "files": files, "clean": len(files) == 0})
     except FileNotFoundError:
         return jsonify({"ok": False, "error": "git executable not found — is Git installed and on your PATH?"})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/git/pull-status")
+def api_git_pull_status():
+    """Fetch from the remote (without merging) and report how many commits
+    the current branch is behind/ahead of its upstream, so the dashboard
+    can tell the user there are updates before they choose to pull."""
+    try:
+        code, out, err = run_git(["fetch"])
+        if code != 0:
+            return jsonify({"ok": False, "error": err.strip() or "git fetch failed — check your network connection or remote configuration."})
+
+        code, out, err = run_git(["rev-parse", "--abbrev-ref", "HEAD"])
+        branch = out.strip() if code == 0 else None
+        if not branch:
+            return jsonify({"ok": False, "error": "Could not determine the current branch."})
+
+        code, out, err = run_git(["rev-list", "--left-right", "--count", "HEAD...@{upstream}"])
+        if code != 0:
+            return jsonify({
+                "ok": False,
+                "error": f"No upstream configured for branch \"{branch}\" — set one with "
+                         f"`git branch --set-upstream-to=origin/{branch}`.",
+            })
+
+        parts = out.split()
+        ahead, behind = (int(parts[0]), int(parts[1])) if len(parts) == 2 else (0, 0)
+        return jsonify({"ok": True, "branch": branch, "ahead": ahead, "behind": behind})
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "git executable not found — is Git installed and on your PATH?"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/git/pull", methods=["POST"])
+def api_git_pull():
+    """Runs a real `git pull`. Only called when the user explicitly clicks
+    Pull after seeing there are unpulled commits — nothing here happens
+    automatically."""
+    log = []
+    try:
+        code, out, err = run_git(["pull"])
+        log.append(f"$ git pull\n{out}{err}".strip())
+        if code != 0:
+            return jsonify({
+                "ok": False,
+                "error": "git pull failed — see the log below. This often means local changes conflict with "
+                         "the incoming commits; you may need to resolve this manually in a terminal.",
+                "log": "\n\n".join(log),
+            }), 500
+        return jsonify({"ok": True, "log": "\n\n".join(log)})
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "git executable not found — is Git installed and on your PATH?", "log": "\n\n".join(log)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}", "log": "\n\n".join(log)})
 
 
 @app.route("/api/git/push", methods=["POST"])
@@ -516,18 +703,18 @@ def api_git_push():
         if not message:
             return jsonify({"ok": False, "error": "Write a commit message first.", "log": ""}), 400
 
-        paths = tracked_paths()
-        if not paths:
-            return jsonify({"ok": False, "error": "None of the configured paths exist — check INDEX_HTML_PATH/ACTIVITIES_IMG_DIR/UNITS_IMG_DIR/IMG_DIR at the top of admin_server.py.", "log": ""}), 400
+        files = [f for f in (data.get("files") or []) if isinstance(f, str) and f.strip()]
+        if not files:
+            return jsonify({"ok": False, "error": "No files selected to stage — pick at least one from the changed files list.", "log": ""}), 400
 
-        code, out, err = run_git(["add", "--"] + paths)
-        log.append(f"$ git add -- {' '.join(paths)}\n{out}{err}".strip())
+        code, out, err = run_git(["add", "--"] + files)
+        log.append(f"$ git add -- {' '.join(files)}\n{out}{err}".strip())
         if code != 0:
             return jsonify({"ok": False, "error": "git add failed.", "log": "\n\n".join(log)}), 500
 
         code, out, err = run_git(["diff", "--cached", "--name-only"])
         if not out.strip():
-            return jsonify({"ok": False, "error": "Nothing to commit — index.html and the image folders match what's already committed.", "log": "\n\n".join(log)}), 400
+            return jsonify({"ok": False, "error": "Nothing to commit — the selected file(s) match what's already committed.", "log": "\n\n".join(log)}), 400
 
         code, out, err = run_git(["commit", "-m", message])
         log.append(f"$ git commit -m \"{message}\"\n{out}{err}".strip())
@@ -541,6 +728,114 @@ def api_git_push():
                 "ok": False,
                 "error": "Committed locally, but git push failed — you can retry with `git push` yourself from a terminal.",
                 "log": "\n\n".join(log)
+            }), 500
+
+        return jsonify({"ok": True, "log": "\n\n".join(log)})
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "git executable not found — is Git installed and on your PATH?", "log": "\n\n".join(log)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Unexpected error: {e}", "log": "\n\n".join(log)})
+
+
+def scoped_paths():
+    """The files/folders this tool is allowed to touch — used to scope both
+    `git log` (so history shown is relevant) and `git checkout` on revert
+    (so reverting never reaches into unrelated parts of the repo)."""
+    candidates = [INDEX_HTML_PATH, ACTIVITIES_IMG_DIR, UNITS_IMG_DIR,
+                  TEAM_IMG_DIR, PARTNERS_IMG_DIR, IMG_DIR]
+    return [p for p in candidates if os.path.exists(p)]
+
+
+@app.route("/api/git/log")
+def api_git_log():
+    """List recent pushed/committed history for the files this tool manages,
+    so the dashboard can show 'here's what changed and when' with a revert
+    button next to each entry."""
+    try:
+        sep = "\x1f"
+        fmt = f"%H{sep}%h{sep}%an{sep}%ad{sep}%s"
+        code, out, err = run_git(
+            ["log", f"--pretty=format:{fmt}", "--date=short", "-n", "40", "--"] + scoped_paths()
+        )
+        if code != 0:
+            return jsonify({"ok": False, "error": err.strip() or "git log failed — is this folder a git repository with commits?"})
+        commits = []
+        for line in out.splitlines():
+            if not line.strip():
+                continue
+            parts = line.split(sep)
+            if len(parts) != 5:
+                continue
+            full_hash, short_hash, author, date, subject = parts
+            commits.append({"hash": full_hash, "short": short_hash, "author": author, "date": date, "message": subject})
+        code2, out2, _ = run_git(["rev-parse", "HEAD"])
+        head = out2.strip() if code2 == 0 else None
+        return jsonify({"ok": True, "commits": commits, "head": head})
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "git executable not found — is Git installed and on your PATH?"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/git/revert", methods=["POST"])
+def api_git_revert():
+    """Restore index.html + the image folders to how they looked at an
+    older commit, then commit and push that restoration as a brand-new
+    commit. Nothing is force-pushed and no history is rewritten — this is
+    the same thing as running `git checkout <hash> -- <files>` yourself and
+    pushing the result, just wired to a button. Requires no .bak file to
+    exist; the old version is read straight out of git history."""
+    log = []
+    try:
+        data = request.get_json() or {}
+        commit_hash = (data.get("hash") or "").strip()
+        if not re.fullmatch(r'[0-9a-fA-F]{7,40}', commit_hash or ""):
+            return jsonify({"ok": False, "error": "That doesn't look like a valid commit hash.", "log": ""}), 400
+
+        code, out, err = run_git(["cat-file", "-e", commit_hash])
+        if code != 0:
+            return jsonify({"ok": False, "error": f"Commit {commit_hash} was not found in this repo.", "log": ""}), 404
+
+        paths = scoped_paths()
+
+        code, out, err = run_git(["checkout", commit_hash, "--"] + paths)
+        log.append(f"$ git checkout {commit_hash} -- {' '.join(paths)}\n{out}{err}".strip())
+        if code != 0:
+            return jsonify({"ok": False, "error": "git checkout failed — see log below.", "log": "\n\n".join(log)}), 500
+
+        # Safety net: if the restored index.html is somehow malformed, undo
+        # the checkout immediately rather than leaving a broken file on disk.
+        try:
+            validate_html(read_index_html(), context="revert")
+        except ValidationError as e:
+            run_git(["checkout", "HEAD", "--"] + paths)
+            return jsonify({
+                "ok": False,
+                "error": f"Refused — the restored version failed validation ({e}). The checkout was undone.",
+                "log": "\n\n".join(log),
+            }), 400
+
+        code, out, err = run_git(["add", "--"] + paths)
+        log.append(f"$ git add -- {' '.join(paths)}\n{out}{err}".strip())
+
+        code, out, err = run_git(["diff", "--cached", "--name-only"])
+        if not out.strip():
+            return jsonify({"ok": False, "error": "That version is identical to what's already here — nothing to revert.", "log": "\n\n".join(log)}), 400
+
+        short = commit_hash[:7]
+        message = f"Revert to {short}"
+        code, out, err = run_git(["commit", "-m", message])
+        log.append(f"$ git commit -m \"{message}\"\n{out}{err}".strip())
+        if code != 0:
+            return jsonify({"ok": False, "error": "git commit failed.", "log": "\n\n".join(log)}), 500
+
+        code, out, err = run_git(["push"])
+        log.append(f"$ git push\n{out}{err}".strip())
+        if code != 0:
+            return jsonify({
+                "ok": False,
+                "error": "Reverted and committed locally, but git push failed — you can retry with `git push` yourself.",
+                "log": "\n\n".join(log),
             }), 500
 
         return jsonify({"ok": True, "log": "\n\n".join(log)})
@@ -613,9 +908,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <div class="brand">IEEE FSM<span>local admin</span></div>
     <button class="tabbtn active" data-tab="activities">Activities</button>
     <button class="tabbtn" data-tab="units">Units &amp; Chapters</button>
+    <button class="tabbtn" data-tab="team">Team</button>
+    <button class="tabbtn" data-tab="partners">Partners</button>
     <button class="tabbtn" data-tab="stats">Hero Stats</button>
     <button class="tabbtn" data-tab="sections">Any Section</button>
-    <button class="tabbtn" data-tab="fullfile">Full File</button>
     <button class="tabbtn" data-tab="publish">Publish</button>
   </nav>
   <main>
@@ -673,6 +969,60 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
      </div>
     </section>
 
+    <section class="panel" id="p-team">
+      <h2>Team</h2>
+      <p class="sub">Loaded directly from your index.html. Add, edit, or reorder team members, then save at the bottom.</p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Add team member</h3>
+          <label>Name</label><input type="text" id="tName">
+          <label>Role</label><input type="text" id="tRole">
+          <label>Initials (avatar fallback)</label><input type="text" id="tInitials" maxlength="3">
+          <label>Photo</label><input type="file" id="tFile" accept="image/*">
+          <div class="note">Uploads straight into your <code>assets/team/</code> folder when you click Add.</div>
+          <div class="row"><div><label>LinkedIn URL</label><input type="url" id="tLinkedin" placeholder="#"></div>
+          <div><label>Instagram URL</label><input type="url" id="tInstagram" placeholder="#"></div></div>
+          <label>Facebook URL</label><input type="url" id="tFacebook" placeholder="#">
+          <div class="btnrow"><button class="btn btn-p" id="tAddBtn" onclick="addTeamMember()">Add member</button>
+          <button class="btn btn-g" id="tCancelBtn" style="display:none;" onclick="cancelTeamEdit()">Cancel edit</button></div>
+        </div>
+        <div class="card">
+          <h3>Current team (<span id="tCount">0</span>)</h3>
+          <div class="entry-scroll" id="tList"></div>
+        </div>
+      </div>
+      <div class="savebar">
+          <button class="btn btn-p" onclick="saveAll()">Save changes to index.html</button>
+          <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
+      </div>
+    </section>
+
+    <section class="panel" id="p-partners">
+      <h2>Partners</h2>
+      <p class="sub">Loaded directly from your index.html. Add, edit, or reorder partners, then save at the bottom.</p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Add partner</h3>
+          <label>Name</label><input type="text" id="pName">
+          <label>Website/Instagram link</label><input type="url" id="pWebsite">
+          <label>Details</label><textarea id="pDetails"></textarea>
+          <label>Fallback text (shown if logo fails to load)</label><input type="text" id="pFallback">
+          <label>Logo</label><input type="file" id="pFile" accept="image/*">
+          <div class="note">Uploads straight into your <code>Logos/</code> folder when you click Add.</div>
+          <div class="btnrow"><button class="btn btn-p" id="pAddBtn" onclick="addPartner()">Add partner</button>
+          <button class="btn btn-g" id="pCancelBtn" style="display:none;" onclick="cancelPartnerEdit()">Cancel edit</button></div>
+        </div>
+        <div class="card">
+          <h3>Current partners (<span id="pCount">0</span>)</h3>
+          <div class="entry-scroll" id="pList"></div>
+        </div>
+      </div>
+      <div class="savebar">
+          <button class="btn btn-p" onclick="saveAll()">Save changes to index.html</button>
+          <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
+      </div>
+    </section>
+
     <section class="panel" id="p-stats">
       <h2>Hero stats</h2>
       <p class="sub">Loaded directly from your index.html. You can't add or remove rows here — the count has to match what's on the page, so only the label/value text is editable.</p>
@@ -713,52 +1063,50 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       </div>
     </section>
 
-    <section class="panel" id="p-fullfile">
-      <h2>Full file editor</h2>
-      <p class="sub">The entire index.html, raw. Use this for anything outside a &lt;section&gt; — nav, footer, head/meta, styles, scripts.</p>
-      <div class="card">
-        <div class="btnrow" style="margin-top:0;">
-          <button class="btn btn-g" onclick="loadFullFile()">Load current file</button>
-        </div>
-        <textarea id="fullFileEditor" style="font-family:monospace; font-size:12px; white-space:pre; margin-top:12px; overflow:hidden;" oninput="autoGrow(this)"></textarea>
-        <div class="btnrow">
-          <button class="btn btn-p" onclick="saveFullFile()">Save entire file</button>
-          <span id="fullFileStatus" style="font-size:13px; color:var(--muted);"></span>
-        </div>
-        <div class="note">This overwrites the whole file with exactly what's in the box below. A backup is made and the result is validated (tag balance, required containers still present) before anything is written — if validation fails, your file is left untouched. This is still the "edit literally anything" option, so double-check it regardless.</div>
-      </div>
-      <div class="savebar">
-        <button class="btn btn-p" onclick="saveAll()" style="position:relative;">Save changes to index.html</button>
-        <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
-     </div>
-    </section>
-
     <section class="panel" id="p-publish">
       <h2>Publish</h2>
-      <p class="sub">Runs git add / commit / push for index.html and your image folders — nothing else in the repo. Nothing here happens automatically; you always write the commit message and click the button.</p>
-      <div class="card" style="max-width:640px;">
-        <h3>Changed files</h3>
-        <div id="gitStatusBox" class="note" style="margin-top:0;">Checking...</div>
-        <div class="btnrow" style="margin-top:10px;">
-          <button class="btn btn-g" onclick="checkGitStatus()">Refresh status</button>
+      <p class="sub">Runs git add / commit / push for your files in the repo.</p>
+      <div style="display:flex; align-items:flex-start; gap:20px; flex-wrap:wrap;">
+        <div style=" width:500px;">
+          <div class="card" style="margin-bottom:20px;">
+            <h3>Pull updates</h3>
+            <div id="pullStatusBox" class="note" style="margin-top:0;">Checking...</div>
+            <div class="btnrow" style="margin-top:10px;">
+              <button class="btn btn-g" onclick="checkPullStatus()">Check for updates</button>
+              <button class="btn btn-p" id="pullBtn" style="display:none;" onclick="pullChanges()">Pull latest changes</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Changed files</h3>
+            <div id="gitStatusBox" class="note" style="margin-top:0;">Checking...</div>
+            <div class="btnrow" style="margin-top:10px;">
+              <button class="btn btn-g" onclick="checkGitStatus()">Refresh status</button>
+              <button class="btn btn-g" onclick="selectAllGitFiles(true)">Select all</button>
+              <button class="btn btn-g" onclick="selectAllGitFiles(false)">Select none</button>
+            </div>
+
+            <label style="margin-top:20px;">Commit message</label>
+            <textarea id="commitMsg" placeholder="" style="min-height:70px;"></textarea>
+
+            <div class="btnrow">
+              <button class="btn btn-p" onclick="commitAndPush()">Commit &amp; push</button>
+              <span id="pushStatus" style="font-size:13px; color:var(--muted);"></span>
+            </div>
+
+            <div id="gitLog" style="display:none;">
+              <label style="margin-top:16px;">Command output</label>
+              <textarea readonly style="min-height:160px; font-family:var(--mono); font-size:12px; background:#0D1117; color:#9FE3A0; white-space:pre; overflow:auto;" id="gitLogText"></textarea>
+            </div>
+          </div>
         </div>
 
-        <label style="margin-top:20px;">Commit message</label>
-        <textarea id="commitMsg" placeholder="" style="min-height:70px;"></textarea>
-
-        <div class="note">Only <code>index.html</code>, <code>Act_Images/</code>, <code>Unit_Images/</code> and <code>Images/</code> are staged — never a blanket "add everything," so nothing else in your repo gets swept in.</div>
-
-        <div class="btnrow">
-          <button class="btn btn-p" onclick="commitAndPush()">Commit &amp; push</button>
-          <span id="pushStatus" style="font-size:13px; color:var(--muted);"></span>
-        </div>
-
-        <div id="gitLog" style="display:none;">
-          <label style="margin-top:16px;">Command output</label>
-          <textarea readonly style="min-height:160px; font-family:var(--mono); font-size:12px; background:#0D1117; color:#9FE3A0; white-space:pre; overflow:auto;" id="gitLogText"></textarea>
+        <div class="card" style="width:600px; height:520px; align-self:stretch; position:sticky; top:20px; display:flex; flex-direction:column;">
+          <h3>Version history</h3>
+          <p class="sub" style="margin-top:-6px;">Every commit that has touched index.html or the image folders. Revert restores that old version and pushes it as a new commit — nothing is force-pushed, and no backup file is needed.</p>
+          <div id="historyBox" class="note" style="margin-top:0; overflow-y:auto; flex:1;">Loading...</div>
         </div>
       </div>
-      <div class="savebar">
+      <div class="savebar" style="position:relative; z-index:1;">
          <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
       </div>
     </section>
@@ -767,7 +1115,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <div class="toast" id="toast"></div>
 
 <script>
-let state = { activities: [], units: [], stats: [] };
+let state = { activities: [], units: [], team: [], partners: [], stats: [] };
 let originalStatsCount = 0;
 
 document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>{
@@ -777,7 +1125,7 @@ document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>{
   document.getElementById('p-'+b.dataset.tab).classList.add('active');
   if(b.dataset.tab === 'sections') refreshSections();
   if(b.dataset.tab === 'fullfile') loadFullFile();
-  if(b.dataset.tab === 'publish') checkGitStatus();
+  if(b.dataset.tab === 'publish'){ checkPullStatus(); checkGitStatus(); refreshHistory(); }
 }));
 
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -816,7 +1164,7 @@ async function loadState(){
   if(j.ok === false){ toast('Could not load current content: ' + j.error, true); return; }
   state = j;
   originalStatsCount = (state.stats || []).length;
-  renderActivities(); renderUnits(); renderStats();
+  renderActivities(); renderUnits(); renderTeam(); renderPartners(); renderStats();
 }
 
 async function uploadFile(inputEl, dir){
@@ -994,6 +1342,169 @@ function dropUnit(dropIdx){
   renderUnits();
 }
 
+/* ---- team ---- */
+let editingTeam = null;
+
+async function addTeamMember(){
+  const name = document.getElementById('tName').value.trim();
+  if(!name){ toast('Add a name first.'); return; }
+  const role = document.getElementById('tRole').value.trim();
+  if(!role){ toast('Add a role first.'); return; }
+  const fileInput = document.getElementById('tFile');
+  let filename = editingTeam !== null ? state.team[editingTeam].photo : 'assets/team/placeholder.jpg';
+  if(fileInput.files && fileInput.files[0]){
+    const uploaded = await uploadFile(fileInput, 'assets/team');
+    if(uploaded) filename = 'assets/team/' + uploaded;
+  }
+  const entry = {
+    name, role,
+    initials: document.getElementById('tInitials').value.trim() || name.split(/\s+/).map(w=>w[0]).join('').slice(0,3).toUpperCase(),
+    photo: filename,
+    linkedin: document.getElementById('tLinkedin').value.trim() || '#',
+    instagram: document.getElementById('tInstagram').value.trim() || '#',
+    facebook: document.getElementById('tFacebook').value.trim() || '#'
+  };
+  if(editingTeam !== null){
+    state.team[editingTeam] = entry;
+    toast('Team member updated (remember to Save)');
+  } else {
+    state.team.push(entry);
+    toast('Team member added (remember to Save)');
+  }
+  cancelTeamEdit();
+  renderTeam();
+}
+function editTeamMember(i){
+  const t = state.team[i];
+  document.getElementById('tName').value = t.name;
+  document.getElementById('tRole').value = t.role;
+  document.getElementById('tInitials').value = t.initials;
+  document.getElementById('tLinkedin').value = t.linkedin === '#' ? '' : t.linkedin;
+  document.getElementById('tInstagram').value = t.instagram === '#' ? '' : t.instagram;
+  document.getElementById('tFacebook').value = t.facebook === '#' ? '' : t.facebook;
+  document.getElementById('tFile').value = '';
+  editingTeam = i;
+  document.getElementById('tAddBtn').textContent = 'Save changes';
+  document.getElementById('tCancelBtn').style.display = 'inline-block';
+}
+function cancelTeamEdit(){
+  editingTeam = null;
+  ['tName','tRole','tInitials','tLinkedin','tInstagram','tFacebook'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tFile').value = '';
+  document.getElementById('tAddBtn').textContent = 'Add member';
+  document.getElementById('tCancelBtn').style.display = 'none';
+}
+function delT(i){
+  if(!confirm('Remove "' + state.team[i].name + '" from the team list? (Nothing is saved until you hit Save.)')) return;
+  state.team.splice(i,1);
+  if(editingTeam===i) cancelTeamEdit();
+  renderTeam();
+}
+
+let dragTeamIndex = null;
+function renderTeam(){
+  document.getElementById('tCount').textContent = state.team.length;
+  const el = document.getElementById('tList');
+  el.innerHTML = state.team.length ? state.team.map((t,i)=>`
+    <div class="entry" draggable="true"
+      ondragstart="dragTeamIndex=${i}; this.style.opacity='0.4';"
+      ondragend="this.style.opacity='1';"
+      ondragover="event.preventDefault();"
+      ondrop="dropTeam(${i});">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="cursor:grab; color:var(--muted);">&#9776;</span>
+        <div><b>${esc(t.name)}</b><span>${esc(t.role)}</span></div>
+      </div>
+      <div class="acts"><button onclick="editTeamMember(${i})" title="Edit">&#9998;</button><button onclick="delT(${i})" title="Delete">&times;</button></div></div>`).join('')
+    : '<div class="empty">No team members.</div>';
+}
+function dropTeam(dropIdx){
+  if(dragTeamIndex === null || dragTeamIndex === dropIdx) return;
+  const [moved] = state.team.splice(dragTeamIndex, 1);
+  state.team.splice(dropIdx, 0, moved);
+  dragTeamIndex = null;
+  renderTeam();
+}
+
+/* ---- partners ---- */
+let editingPartner = null;
+
+async function addPartner(){
+  const name = document.getElementById('pName').value.trim();
+  if(!name){ toast('Add a name first.'); return; }
+  const fileInput = document.getElementById('pFile');
+  let filename = editingPartner !== null ? state.partners[editingPartner].logo : 'Logos/placeholder-logo.svg';
+  if(fileInput.files && fileInput.files[0]){
+    const uploaded = await uploadFile(fileInput, 'Logos');
+    if(uploaded) filename = 'Logos/' + uploaded;
+  }
+  const entry = {
+    name,
+    website: document.getElementById('pWebsite').value.trim(),
+    details: document.getElementById('pDetails').value.trim(),
+    fallback: document.getElementById('pFallback').value.trim() || name,
+    logo: filename
+  };
+  if(editingPartner !== null){
+    state.partners[editingPartner] = entry;
+    toast('Partner updated (remember to Save)');
+  } else {
+    state.partners.push(entry);
+    toast('Partner added (remember to Save)');
+  }
+  cancelPartnerEdit();
+  renderPartners();
+}
+function editPartner(i){
+  const p = state.partners[i];
+  document.getElementById('pName').value = p.name;
+  document.getElementById('pWebsite').value = p.website;
+  document.getElementById('pDetails').value = p.details;
+  document.getElementById('pFallback').value = p.fallback;
+  document.getElementById('pFile').value = '';
+  editingPartner = i;
+  document.getElementById('pAddBtn').textContent = 'Save changes';
+  document.getElementById('pCancelBtn').style.display = 'inline-block';
+}
+function cancelPartnerEdit(){
+  editingPartner = null;
+  ['pName','pWebsite','pDetails','pFallback'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pFile').value = '';
+  document.getElementById('pAddBtn').textContent = 'Add partner';
+  document.getElementById('pCancelBtn').style.display = 'none';
+}
+function delP(i){
+  if(!confirm('Remove "' + state.partners[i].name + '" from the partners list? (Nothing is saved until you hit Save.)')) return;
+  state.partners.splice(i,1);
+  if(editingPartner===i) cancelPartnerEdit();
+  renderPartners();
+}
+
+let dragPartnerIndex = null;
+function renderPartners(){
+  document.getElementById('pCount').textContent = state.partners.length;
+  const el = document.getElementById('pList');
+  el.innerHTML = state.partners.length ? state.partners.map((p,i)=>`
+    <div class="entry" draggable="true"
+      ondragstart="dragPartnerIndex=${i}; this.style.opacity='0.4';"
+      ondragend="this.style.opacity='1';"
+      ondragover="event.preventDefault();"
+      ondrop="dropPartner(${i});">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="cursor:grab; color:var(--muted);">&#9776;</span>
+        <div><b>${esc(p.name)}</b><span>${esc(p.website)}</span></div>
+      </div>
+      <div class="acts"><button onclick="editPartner(${i})" title="Edit">&#9998;</button><button onclick="delP(${i})" title="Delete">&times;</button></div></div>`).join('')
+    : '<div class="empty">No partners.</div>';
+}
+function dropPartner(dropIdx){
+  if(dragPartnerIndex === null || dragPartnerIndex === dropIdx) return;
+  const [moved] = state.partners.splice(dragPartnerIndex, 1);
+  state.partners.splice(dropIdx, 0, moved);
+  dragPartnerIndex = null;
+  renderPartners();
+}
+
 /* ---- stats ---- */
 function renderStats(){
   document.getElementById('sForm').innerHTML = state.stats.map((s,i)=>`
@@ -1005,7 +1516,7 @@ function renderStats(){
 
 /* ---- save ---- */
 async function saveAll(){
-  const summary = `${state.activities.length} activities, ${state.units.length} units, ${state.stats.length} stats`;
+  const summary = `${state.activities.length} activities, ${state.units.length} units, ${state.team.length} team members, ${state.partners.length} partners, ${state.stats.length} stats`;
   if(!confirm('Save to index.html now?\\n\\n' + summary + '\\n\\nA timestamped backup will be made first.')) return;
   document.getElementById('saveStatus').textContent = 'Saving...';
   const j = await safeFetch('/api/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(state)});
@@ -1047,41 +1558,116 @@ async function saveSection(){
   toast(j.ok ? 'Section #' + id + ' saved to index.html' : 'Not saved — ' + j.error, !j.ok);
 }
 
-/* ---- full file ---- */
-async function loadFullFile(){
-  const j = await safeFetch('/api/fullfile');
-  const el = document.getElementById('fullFileEditor');
-  el.value = j.ok ? j.html : ('Error: ' + j.error);
-  autoGrow(el);
+/* ---- version history / revert (git) ---- */
+async function refreshHistory(){
+  const box = document.getElementById('historyBox');
+  box.textContent = 'Loading...';
+  const j = await safeFetch('/api/git/log');
+  if(j.ok === false){ box.textContent = 'Could not load history: ' + j.error; return; }
+  if(!j.commits.length){ box.textContent = 'No commit history found for these files yet.'; return; }
+  box.innerHTML = j.commits.map(c => `
+    <div style="padding:10px 0; border-bottom:1px solid var(--line, #2a2a2a);">
+      <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c.message)}</div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:2px;">
+        <span style="font-size:12px; color:var(--muted);">
+          <span style="font-family:var(--mono);">${esc(c.short)}</span> &middot; ${esc(c.author)} &middot; ${esc(c.date)}
+        </span>
+        ${c.hash === j.head
+          ? '<span style="font-size:12px; color:var(--muted); white-space:nowrap;">current version</span>'
+          : `<button class="btn btn-g" style="white-space:nowrap;" onclick="revertTo('${c.hash}','${esc(c.short)}')">Revert to this</button>`}
+      </div>
+    </div>`).join('');
 }
-async function saveFullFile(){
-  if(!confirm('This overwrites the entire index.html with what is in the box. A backup will be made, and the result is checked for balanced tags before writing, but double check you have not broken anything logically. Continue?')) return;
-  const htmlVal = document.getElementById('fullFileEditor').value;
-  const j = await safeFetch('/api/fullfile', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({html: htmlVal})
-  });
-  document.getElementById('fullFileStatus').textContent = j.ok ? 'Saved (backup created)' : '';
-  toast(j.ok ? 'Whole file saved' : 'Not saved — ' + j.error, !j.ok);
+async function revertTo(hash, short){
+  if(!confirm('Revert to commit ' + short + '?....This restores that old version from git history (no backup file needed), then commits and pushes the restoration as a new commit. It does not delete or rewrite any history — you can revert again later if you change your mind.')) return;
+  const box = document.getElementById('historyBox');
+  box.textContent = 'Reverting...';
+  const j = await safeFetch('/api/git/revert', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({hash})});
+  if(j.log){
+    document.getElementById('gitLog').style.display = 'block';
+    document.getElementById('gitLogText').value = j.log;
+  }
+  toast(j.ok ? 'Reverted to ' + short + ' and pushed' : 'Revert failed — ' + j.error, !j.ok);
+  refreshHistory();
+  if(j.ok){
+    loadState();       // index.html on disk changed
+    refreshSections();
+    checkGitStatus();
+  }
 }
 
 /* ---- publish (git) ---- */
+let gitChangedFiles = [];
+
+async function checkPullStatus(){
+  const box = document.getElementById('pullStatusBox');
+  box.textContent = 'Checking...';
+  document.getElementById('pullBtn').style.display = 'none';
+  const j = await safeFetch('/api/git/pull-status');
+  if(j.ok === false){ box.textContent = 'Could not check for updates: ' + j.error; return; }
+  const aheadNote = j.ahead ? (' You also have ' + j.ahead + ' local commit(s) not yet pushed.') : '';
+  if(j.behind === 0){
+    box.textContent = 'Up to date with the remote (' + j.branch + ').' + aheadNote;
+  } else {
+    box.innerHTML = 'Branch <b>' + esc(j.branch) + '</b> is <b>' + j.behind + ' commit(s) behind</b> its remote.' + esc(aheadNote);
+    document.getElementById('pullBtn').style.display = 'inline-block';
+  }
+}
+async function pullChanges(){
+  if(!confirm('Pull the latest changes from the remote now?\\n\\nIf any local edits conflict with the incoming commits, this may fail and need manual resolution in a terminal.')) return;
+  const box = document.getElementById('pullStatusBox');
+  box.textContent = 'Pulling...';
+  const j = await safeFetch('/api/git/pull', {method:'POST'});
+  if(j.log){
+    document.getElementById('gitLog').style.display = 'block';
+    document.getElementById('gitLogText').value = j.log;
+  }
+  toast(j.ok ? 'Pulled latest changes' : 'Pull failed — ' + j.error, !j.ok);
+  if(j.ok){
+    loadState();       // index.html may have changed on disk
+    refreshSections();
+    refreshHistory();
+  }
+  checkPullStatus();
+  checkGitStatus();
+}
+
 async function checkGitStatus(){
   const box = document.getElementById('gitStatusBox');
   box.textContent = 'Checking...';
   const j = await safeFetch('/api/git/status');
-  if(j.ok === false){ box.textContent = 'Could not check status: ' + j.error; return; }
-  if(j.clean){
+  if(j.ok === false){ box.textContent = 'Could not check status: ' + j.error; gitChangedFiles = []; return; }
+  gitChangedFiles = j.files || [];
+  renderGitFiles();
+}
+function renderGitFiles(){
+  const box = document.getElementById('gitStatusBox');
+  if(!gitChangedFiles.length){
     box.textContent = 'No changes compared to the last commit.';
-  } else {
-    box.innerHTML = '<b>' + j.changed.length + ' changed file(s):</b><br>' + j.changed.map(esc).join('<br>');
+    return;
   }
+  box.innerHTML = '<b>' + gitChangedFiles.length + ' changed file(s) — pick what to stage:</b>' +
+    gitChangedFiles.map((f,i) => `
+      <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-weight:400; cursor:pointer;">
+        <input type="checkbox" class="gitFileChk" data-path="${esc(f.path)}" checked>
+        <span style="font-family:var(--mono); font-size:11.5px; color:var(--muted); min-width:34px;">${esc(f.status)}</span>
+        <span>${esc(f.path)}</span>
+      </label>`).join('');
+}
+function selectAllGitFiles(select){
+  document.querySelectorAll('.gitFileChk').forEach(c => c.checked = select);
+}
+function selectedGitFiles(){
+  return Array.from(document.querySelectorAll('.gitFileChk:checked')).map(c => c.dataset.path);
 }
 async function commitAndPush(){
   const message = document.getElementById('commitMsg').value.trim();
   if(!message){ toast('Write a commit message first.'); return; }
-  if(!confirm('Commit and push now with message:\\n\\n"' + message + '"\\n\\nThis will run git add, commit, and push for real.')) return;
+  const files = selectedGitFiles();
+  if(!files.length){ toast('Select at least one file to stage.'); return; }
+  if(!confirm('Commit and push now with message:\\n\\n"' + message + '"\\n\\nStaging ' + files.length + ' file(s). This will run git add, commit, and push for real.')) return;
   document.getElementById('pushStatus').textContent = 'Working...';
-  const j = await safeFetch('/api/git/push', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message})});
+  const j = await safeFetch('/api/git/push', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message, files})});
   if(j.log){
     document.getElementById('gitLog').style.display = 'block';
     document.getElementById('gitLogText').value = j.log;
@@ -1091,11 +1677,13 @@ async function commitAndPush(){
   if(j.ok){
     document.getElementById('commitMsg').value = '';
     checkGitStatus();
+    refreshHistory();
   }
 }
 
 loadState();
 refreshSections();
+refreshHistory();
 </script>
 </body>
 </html>
