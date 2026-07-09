@@ -2842,7 +2842,7 @@
   <div class="mobile-menu" id="mobileMenu">
     <div class="mobile-menu-top">
       <span class="brand" style="color:var(--text);">
-        <img src="Logos/ieee-fsm-white.svg" alt="IEEE FSM SB" style="height:40px; width:auto; filter: none;">
+        <img id="mobileNavIeeeLogo" src="Logos/ieee-fsm-white.svg" alt="IEEE FSM SB" style="height:40px; width:auto; filter: none;">
       </span>
       <button class="btn btn-ghost theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">
         <i class="fa-solid fa-moon"></i>
@@ -3890,11 +3890,15 @@
       const sbthemeLogo = normalizedTheme === 'light' ? 'Logos/ieee-fsm-blue.svg' : 'Logos/ieee-fsm-white.svg';
       const csthemelogo = normalizedTheme === 'light' ? 'Logos/ieee-cs-black.svg' : 'Logos/ieee-cs-white.svg';
       const wieThemeLogo = normalizedTheme === 'light' ? 'Logos/ieee-wie-purple.png' : 'Logos/ieee-wie-white.png';
+
       const navIeeeLogo = document.getElementById('navIeeeLogo');
+      const mobileNavIeeeLogo = document.getElementById('mobileNavIeeeLogo');
       const footerIeeeLogo = document.getElementById('footerIeeeLogo');
       const csLogo = document.getElementById('cs-logo');
       const wieLogo = document.getElementById('wie-logo');
+
       if (navIeeeLogo) navIeeeLogo.src = sbthemeLogo;
+      if (mobileNavIeeeLogo) mobileNavIeeeLogo.src = sbthemeLogo;
       if (footerIeeeLogo) footerIeeeLogo.src = sbthemeLogo;
       if (csLogo) csLogo.src = csthemelogo;
       if (wieLogo) wieLogo.src = wieThemeLogo;
