@@ -14,7 +14,7 @@
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-  
+
   <!-- Vercel Web Analytics -->
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -1096,12 +1096,15 @@
     }
 
     .partners-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: 20px;
     }
 
     .partner-card {
+      flex: 0 1 210px;
+      max-width: 240px;
       border: 1px solid rgba(17, 32, 51, 0.1);
       border-radius: var(--radius);
       background: var(--surface);
@@ -1406,15 +1409,18 @@
     }
 
     .units-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: 22px;
     }
 
     .unit-card {
+      flex: 1 1 calc(25% - 16.5px);
+      max-width: calc(25% - 16.5px);
       border: 1px solid rgba(17, 32, 51, 0.08);
       border-radius: var(--radius);
-      padding: 28px 24px;
+      padding: 25px 20px;
       background: var(--surface2);
       opacity: 0;
       transform: translateY(24px);
@@ -2469,8 +2475,12 @@
     /* ── tablet landscape (980-1199px) ── */
     @media (max-width: 1199px) {
       .units-grid {
-        grid-template-columns: repeat(2, 1fr);
         gap: 18px;
+      }
+
+      .unit-card {
+        flex-basis: calc(50% - 9px);
+        max-width: calc(50% - 9px);
       }
 
       .team-grid {
@@ -2484,6 +2494,11 @@
       .nav-links,
       .nav-cta .btn-ghost {
         display: none;
+      }
+
+      .unit-card {
+        flex-basis: calc(50% - 9px);
+        max-width: calc(50% - 9px);
       }
 
       .navIeeeLogo {
@@ -2642,8 +2657,12 @@
 
       /* units: single column */
       .units-grid {
-        grid-template-columns: 1fr;
         gap: 14px;
+      }
+
+      .unit-card {
+        flex-basis: 100%;
+        max-width: 100%;
       }
 
       /* team: 2 columns but smaller */
@@ -2676,6 +2695,11 @@
     @media (max-width: 399px) {
       .team-grid {
         grid-template-columns: 1fr;
+      }
+
+      .unit-card {
+        flex-basis: 100%;
+        max-width: 100%;
       }
 
       .units-grid {
@@ -2996,7 +3020,8 @@
               <div>
                 <h3>Integration Day</h3>
                 <p>A welcoming event introducing new members to IEEE, its activities, and the student community.</p>
-                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DBmXXgiNpqq/" target="_blank" rel="noopener">
+                <a class="tl-more" href="https://www.instagram.com/ieee_fsm_student_branch/p/DBmXXgiNpqq/"
+                  target="_blank" rel="noopener">
                   See more <span class="tl-more-arrow">&rarr;</span>
                 </a>
               </div>
@@ -3010,7 +3035,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2024">
+          <div class="tl-item" data-year="2024">
             <div class="tl-date">31 October 2024</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3035,7 +3060,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2025">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">08 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3059,7 +3084,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2025">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">12 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3084,7 +3109,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2025">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">26 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3109,7 +3134,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2025">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">23 November 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3133,7 +3158,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2025">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">17 December 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3158,7 +3183,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">19 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3182,7 +3207,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">24 &amp; 25 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3207,7 +3232,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">11 &amp; 12 February 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3232,7 +3257,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">01 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3257,7 +3282,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">14 &amp; 15 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3282,7 +3307,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">08 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3307,7 +3332,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">19 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3332,7 +3357,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">02 &amp; 03 May 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3376,19 +3401,20 @@
           <p>Smaller communities inside the branch, each focused on a specific field.</p>
         </div>
         <div class="units-grid">
-<div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
+          <div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
             data-details="">
-            <div class="unit-logo-img"><img id="cs-logo" src="Logos/ieee-cs-white.svg" alt="Computer Society Chapter Logo" 
-                 style="width: 200px; height: auto; padding: 25px;" onerror="this.style.display='none';"></div>
+            <div class="unit-logo-img"><img id="cs-logo" src="Logos/ieee-cs-white.svg"
+                alt="Computer Society Chapter Logo" style="width: 200px; height: auto; padding: 25px;"
+                onerror="this.style.display='none';"></div>
             <span class="tag">CS</span>
             <h3>Computer Society Chapter</h3>
             <p>Software engineering, AI, and competitive programming, through projects, talks, and contests.</p>
           </div>
 
-<div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
+          <div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
             data-details="">
             <div class="unit-logo-img"><img id="wie-logo" src="Logos/ieee-wie-white.png" alt="Women in Engineering Logo"
-                 style="width: 155px; height: auto; padding: 0px;" onerror="this.style.display='none';"></div>
+                style="width: 155px; height: auto; padding: 0px;" onerror="this.style.display='none';"></div>
             <span class="tag">WIE</span>
             <h3>Women in Engineering</h3>
             <p>Supporting and empowering women in engineering through mentorship, talks, and networking.</p>
