@@ -31,6 +31,7 @@ ACTIVITIES_IMG_DIR = "Act_Images"    # folder used by <img src="Act_Images/...">
 UNITS_IMG_DIR = "Unit_Images"        # folder for unit logos (adjust if yours differs)
 TEAM_IMG_DIR = "assets/team"         # folder used by <img src="assets/team/...">
 PARTNERS_IMG_DIR = "Logos"           # folder used by <img src="Logos/...">
+GALLERY_IMG_DIR = "gallery"          # folder used by <img src="gallery/...">
 IMG_DIR = "Images"                   # folder for other images (not used by this tool, but git push includes it)
 REPO_DIR = "."                       # folder containing your git repo — usually same folder as this script
 PORT = 5055
@@ -145,6 +146,30 @@ def esc(s):
     return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
+def sniff_web_image(header):
+    """Return a short format name ('jpeg', 'png', ...) if `header` (the first
+    bytes of a file) is a raster/vector image a browser can actually render,
+    or None otherwise. This is a magic-number check on the real bytes, so a
+    RAW/DNG/HEIC/TIFF file renamed to .png is still correctly rejected."""
+    if header[:3] == b'\xff\xd8\xff':
+        return 'jpeg'
+    if header[:8] == b'\x89PNG\r\n\x1a\n':
+        return 'png'
+    if header[:6] in (b'GIF87a', b'GIF89a'):
+        return 'gif'
+    if header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+        return 'webp'
+    # ISO-BMFF 'ftyp' box at offset 4 — used by AVIF (browser-viewable). HEIC
+    # ('heic'/'heif' brands) uses the same container but browsers can't show it,
+    # so only AVIF brands are accepted here.
+    if header[4:8] == b'ftyp' and header[8:12] in (b'avif', b'avis'):
+        return 'avif'
+    head = header.lstrip()[:256].lower()
+    if head[:5] == b'<?xml' or head[:4] == b'<svg':
+        return 'svg'
+    return None
+
+
 def img_src_of(block, default=""):
     """Find the src of the first <img> tag in `block`, regardless of what
     other attributes (id, alt, class, onerror...) come before or after it —
@@ -191,7 +216,8 @@ def validate_html(html, context=""):
                 f"Nothing was written; your file is unchanged."
             )
     for required in ('<div class="timeline">', '<div class="units-grid">',
-                      '<div class="team-grid">', '<div class="partners-grid">', "</html>"):
+                      '<div class="team-grid">', '<div class="partners-grid">',
+                      '<div class="gallery-grid">', "</html>"):
         if required not in html:
             raise ValidationError(
                 f"Refused to save{(' — ' + context) if context else ''}: "
@@ -314,6 +340,23 @@ def parse_partners(html):
     return items
 
 
+def parse_gallery(html):
+    span = find_container_span(html, "gallery-grid")
+    if not span:
+        return []
+    inner = html[span[0]:span[1]]
+    items = []
+    for start, end in top_level_blocks(inner, "gallery-item"):
+        block = inner[start:end]
+        items.append({
+            "photo": img_src_of(block, f"{GALLERY_IMG_DIR}/placeholder.jpg"),
+            "title": text_of(r'<span class="gallery-caption">(.*?)</span>', block),
+            "alt": text_of(r'<img\b[^>]*\balt="(.*?)"', block),
+            "raw_html": block,
+        })
+    return items
+
+
 # ============================================================
 # Serialization: build HTML blocks from state.
 # Every field is read with .get(..., default) rather than [..],
@@ -427,6 +470,24 @@ def partner_output_html(p):
     return raw if raw else build_partner_block(p)
 
 
+def build_gallery_block(g):
+    title = g.get("title", "")
+    alt = g.get("alt") or title
+    return f'''          <div class="gallery-item reveal">
+            <img src="{esc(g.get("photo", f"{GALLERY_IMG_DIR}/placeholder.jpg"))}" alt="{esc(alt)}"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="gallery-fallback" style="display:none;">Photo</div>
+            <div class="gallery-overlay">
+              <span class="gallery-caption">{esc(title)}</span>
+            </div>
+          </div>'''
+
+
+def gallery_output_html(g):
+    raw = g.get("raw_html")
+    return raw if raw else build_gallery_block(g)
+
+
 def replace_container(html, class_name, new_inner_html):
     span = find_container_span(html, class_name)
     if not span:
@@ -480,6 +541,7 @@ def api_state():
             "units": parse_units(html),
             "team": parse_team(html),
             "partners": parse_partners(html),
+            "gallery": parse_gallery(html),
             "stats": parse_stats(html),
         })
     except Exception as e:
@@ -495,6 +557,20 @@ def api_upload():
     filename = secure_filename(file.filename)
     if not filename:
         return jsonify({"ok": False, "error": "That filename isn't valid"}), 400
+    # Sniff the actual bytes — the browser's accept="image/*" trusts the OS,
+    # which happily reports iPhone/camera RAW files (DNG, HEIC, TIFF) as images
+    # even though no browser can render them. Rejecting here means a clear
+    # error in the panel instead of a broken tile that only shows a fallback.
+    header = file.stream.read(64)
+    file.stream.seek(0)
+    kind = sniff_web_image(header)
+    if not kind:
+        return jsonify({"ok": False, "error": (
+            "That file isn't a web-viewable image. Browsers can only display "
+            "JPEG, PNG, GIF, WebP, AVIF, or SVG — this looks like a RAW/DNG, "
+            "HEIC, or TIFF file (common straight off an iPhone or camera). "
+            "Export or save it as a JPEG or PNG first, then upload that."
+        )}), 400
     os.makedirs(target_dir, exist_ok=True)
     save_path = os.path.join(target_dir, filename)
     file.save(save_path)
@@ -511,11 +587,13 @@ def api_save():
         units_html = "\n\n".join(unit_output_html(u) for u in data.get("units", []))
         team_html = "\n\n".join(team_output_html(t) for t in data.get("team", []))
         partners_html = "\n\n".join(partner_output_html(p) for p in data.get("partners", []))
+        gallery_html = "\n\n".join(gallery_output_html(g) for g in data.get("gallery", []))
 
         new_html = replace_container(html, "timeline", activities_html)
         new_html = replace_container(new_html, "units-grid", units_html)
         new_html = replace_container(new_html, "team-grid", team_html)
         new_html = replace_container(new_html, "partners-grid", partners_html)
+        new_html = replace_container(new_html, "gallery-grid", gallery_html)
         new_html = replace_stats(new_html, data.get("stats", []))
 
         write_index_html_safely(new_html, context="structured save")
@@ -742,7 +820,7 @@ def scoped_paths():
     `git log` (so history shown is relevant) and `git checkout` on revert
     (so reverting never reaches into unrelated parts of the repo)."""
     candidates = [INDEX_HTML_PATH, ACTIVITIES_IMG_DIR, UNITS_IMG_DIR,
-                  TEAM_IMG_DIR, PARTNERS_IMG_DIR, IMG_DIR]
+                  TEAM_IMG_DIR, PARTNERS_IMG_DIR, GALLERY_IMG_DIR, IMG_DIR]
     return [p for p in candidates if os.path.exists(p)]
 
 
@@ -910,6 +988,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <button class="tabbtn" data-tab="units">Units &amp; Chapters</button>
     <button class="tabbtn" data-tab="team">Team</button>
     <button class="tabbtn" data-tab="partners">Partners</button>
+    <button class="tabbtn" data-tab="gallery">Gallery</button>
     <button class="tabbtn" data-tab="stats">Hero Stats</button>
     <button class="tabbtn" data-tab="sections">Any Section</button>
     <button class="tabbtn" data-tab="publish">Publish</button>
@@ -1023,6 +1102,29 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       </div>
     </section>
 
+    <section class="panel" id="p-gallery">
+      <h2>Gallery</h2>
+      <p class="sub">Loaded directly from your index.html. Add, edit, or reorder gallery photos, then save at the bottom.</p>
+      <div class="grid2">
+        <div class="card">
+          <h3>Add photo</h3>
+          <label>Title (caption)</label><input type="text" id="gTitle">
+          <label>Photo</label><input type="file" id="gFile" accept="image/*">
+          <div class="note">Uploads straight into your <code>gallery/</code> folder when you click Add.</div>
+          <div class="btnrow"><button class="btn btn-p" id="gAddBtn" onclick="addGalleryPhoto()">Add photo</button>
+          <button class="btn btn-g" id="gCancelBtn" style="display:none;" onclick="cancelGalleryEdit()">Cancel edit</button></div>
+        </div>
+        <div class="card">
+          <h3>Current photos (<span id="gCount">0</span>)</h3>
+          <div class="entry-scroll" id="gList"></div>
+        </div>
+      </div>
+      <div class="savebar">
+          <button class="btn btn-p" onclick="saveAll()">Save changes to index.html</button>
+          <span id="saveStatus" style="margin-left:12px; font-size:13px; color:var(--muted);"></span>
+      </div>
+    </section>
+
     <section class="panel" id="p-stats">
       <h2>Hero stats</h2>
       <p class="sub">Loaded directly from your index.html. You can't add or remove rows here — the count has to match what's on the page, so only the label/value text is editable.</p>
@@ -1115,7 +1217,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <div class="toast" id="toast"></div>
 
 <script>
-let state = { activities: [], units: [], team: [], partners: [], stats: [] };
+let state = { activities: [], units: [], team: [], partners: [], gallery: [], stats: [] };
 let originalStatsCount = 0;
 
 document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>{
@@ -1164,7 +1266,7 @@ async function loadState(){
   if(j.ok === false){ toast('Could not load current content: ' + j.error, true); return; }
   state = j;
   originalStatsCount = (state.stats || []).length;
-  renderActivities(); renderUnits(); renderTeam(); renderPartners(); renderStats();
+  renderActivities(); renderUnits(); renderTeam(); renderPartners(); renderGallery(); renderStats();
 }
 
 async function uploadFile(inputEl, dir){
@@ -1505,6 +1607,82 @@ function dropPartner(dropIdx){
   renderPartners();
 }
 
+/* ---- gallery ---- */
+let editingGallery = null;
+
+async function addGalleryPhoto(){
+  const title = document.getElementById('gTitle').value.trim();
+  if(!title){ toast('Add a title first.'); return; }
+  const fileInput = document.getElementById('gFile');
+  let filename = editingGallery !== null ? state.gallery[editingGallery].photo : 'gallery/placeholder.jpg';
+  if(fileInput.files && fileInput.files[0]){
+    const uploaded = await uploadFile(fileInput, 'gallery');
+    if(uploaded) filename = 'gallery/' + uploaded;
+  } else if(editingGallery === null){
+    toast('Pick a photo first.'); return;
+  }
+  const entry = {
+    title,
+    alt: title,
+    photo: filename
+  };
+  if(editingGallery !== null){
+    state.gallery[editingGallery] = entry;
+    toast('Photo updated (remember to Save)');
+  } else {
+    state.gallery.push(entry);
+    toast('Photo added (remember to Save)');
+  }
+  cancelGalleryEdit();
+  renderGallery();
+}
+function editGalleryPhoto(i){
+  const g = state.gallery[i];
+  document.getElementById('gTitle').value = g.title;
+  document.getElementById('gFile').value = '';
+  editingGallery = i;
+  document.getElementById('gAddBtn').textContent = 'Save changes';
+  document.getElementById('gCancelBtn').style.display = 'inline-block';
+}
+function cancelGalleryEdit(){
+  editingGallery = null;
+  document.getElementById('gTitle').value = '';
+  document.getElementById('gFile').value = '';
+  document.getElementById('gAddBtn').textContent = 'Add photo';
+  document.getElementById('gCancelBtn').style.display = 'none';
+}
+function delG(i){
+  if(!confirm('Remove "' + state.gallery[i].title + '" from the gallery? (Nothing is saved until you hit Save.)')) return;
+  state.gallery.splice(i,1);
+  if(editingGallery===i) cancelGalleryEdit();
+  renderGallery();
+}
+
+let dragGalleryIndex = null;
+function renderGallery(){
+  document.getElementById('gCount').textContent = state.gallery.length;
+  const el = document.getElementById('gList');
+  el.innerHTML = state.gallery.length ? state.gallery.map((g,i)=>`
+    <div class="entry" draggable="true"
+      ondragstart="dragGalleryIndex=${i}; this.style.opacity='0.4';"
+      ondragend="this.style.opacity='1';"
+      ondragover="event.preventDefault();"
+      ondrop="dropGallery(${i});">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="cursor:grab; color:var(--muted);">&#9776;</span>
+        <div><b>${esc(g.title)}</b><span>${esc(g.photo)}</span></div>
+      </div>
+      <div class="acts"><button onclick="editGalleryPhoto(${i})" title="Edit">&#9998;</button><button onclick="delG(${i})" title="Delete">&times;</button></div></div>`).join('')
+    : '<div class="empty">No gallery photos.</div>';
+}
+function dropGallery(dropIdx){
+  if(dragGalleryIndex === null || dragGalleryIndex === dropIdx) return;
+  const [moved] = state.gallery.splice(dragGalleryIndex, 1);
+  state.gallery.splice(dropIdx, 0, moved);
+  dragGalleryIndex = null;
+  renderGallery();
+}
+
 /* ---- stats ---- */
 function renderStats(){
   document.getElementById('sForm').innerHTML = state.stats.map((s,i)=>`
@@ -1516,7 +1694,7 @@ function renderStats(){
 
 /* ---- save ---- */
 async function saveAll(){
-  const summary = `${state.activities.length} activities, ${state.units.length} units, ${state.team.length} team members, ${state.partners.length} partners, ${state.stats.length} stats`;
+  const summary = `${state.activities.length} activities, ${state.units.length} units, ${state.team.length} team members, ${state.partners.length} partners, ${state.gallery.length} gallery photos, ${state.stats.length} stats`;
   if(!confirm('Save to index.html now?\\n\\n' + summary + '\\n\\nA timestamped backup will be made first.')) return;
   document.getElementById('saveStatus').textContent = 'Saving...';
   const j = await safeFetch('/api/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(state)});

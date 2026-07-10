@@ -1953,17 +1953,33 @@
       background: var(--navy-deep);
     }
 
-    .gallery-grid {
+    .gallery-slider {
+      position: relative;
       margin-top: 44px;
+    }
+
+    .gallery-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      grid-auto-rows: 130px;
+      grid-auto-flow: column;
+      grid-template-rows: repeat(2, 1fr);
+      grid-auto-columns: clamp(240px, 26vw, 340px);
+      height: 520px;
       gap: 16px;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      scroll-snap-type: x mandatory;
+      padding: 4px;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .gallery-grid::-webkit-scrollbar {
+      display: none;
     }
 
     .gallery-item {
       position: relative;
-      grid-row: span var(--span, 1);
+      scroll-snap-align: start;
       border-radius: var(--radius);
       overflow: hidden;
       cursor: pointer;
@@ -1981,6 +1997,53 @@
 
     .gallery-item:hover img {
       transform: scale(1.08);
+    }
+
+    /* Reveal starts hidden; inside the horizontal slider an item can sit
+       off-screen and never trigger the observer, so keep gallery items shown. */
+    .gallery-item.reveal {
+      opacity: 1;
+      transform: none;
+    }
+
+    .gallery-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 26px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 5;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+      transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .gallery-arrow:hover {
+      background: var(--ieee-blue);
+      color: #fff;
+      transform: translateY(-50%) scale(1.08);
+    }
+
+    .gallery-arrow.prev {
+      left: -18px;
+    }
+
+    .gallery-arrow.next {
+      right: -18px;
+    }
+
+    /* Hidden when there's nothing to scroll to in that direction. */
+    .gallery-arrow[hidden] {
+      display: none;
     }
 
     .gallery-fallback {
@@ -2111,8 +2174,22 @@
 
     @media (max-width: 767px) {
       .gallery-grid {
-        grid-template-columns: repeat(2, 1fr);
-        grid-auto-rows: 150px;
+        height: 70vh;
+        grid-auto-columns: 72vw;
+      }
+
+      .gallery-arrow {
+        width: 42px;
+        height: 42px;
+        font-size: 22px;
+      }
+
+      .gallery-arrow.prev {
+        left: 6px;
+      }
+
+      .gallery-arrow.next {
+        right: 6px;
       }
 
       .lightbox-nav {
@@ -2961,7 +3038,7 @@
         </div>
 
         <div class="partners-grid">
-          <article class="partner-card reveal" data-website="https://fsm.rnu.tn"
+<article class="partner-card reveal" data-website="https://fsm.rnu.tn"
             data-details="The Faculty of Sciences of Monastir (FSM) is the academic home of our student branch, providing resources, mentorship, and a platform for students to engage in technical and professional development activities.">
             <div class="partner-logo">
               <img src="Logos/fsm.png" alt="FSM Partner Logo"
@@ -2970,7 +3047,8 @@
             </div>
             <h3>Faculty of Sciences of Monastir</h3>
           </article>
-          <article class="partner-card reveal" data-website="https://ieee.tn/"
+
+<article class="partner-card reveal" data-website="https://ieee.tn/"
             data-details="IEEE Tunisia Section is the local chapter of the global IEEE organization, providing support and resources to our student branch.">
             <div class="partner-logo">
               <img src="Logos/ieee-section.png" alt="IEEE Tunisia Partner Logo"
@@ -2979,7 +3057,8 @@
             </div>
             <h3>IEEE Tunisia Section</h3>
           </article>
-          <article class="partner-card reveal tarantinoo-card"
+
+<article class="partner-card reveal tarantinoo-card"
             data-website="https://www.instagram.com/tarantino.monastir/"
             data-details="Tarantinoo Café has been one of IEEE FSM SB's trusted partners, supporting our events and providing exclusive offers for our members.">
             <div class="partner-logo">
@@ -2989,7 +3068,8 @@
             </div>
             <h3>Tarantinoo Cafe</h3>
           </article>
-          <article class="partner-card reveal funtopia-card" data-website="https://www.instagram.com/funtopia.game/"
+
+<article class="partner-card reveal funtopia-card" data-website="https://www.instagram.com/funtopia.game/"
             data-details="Funtopia is a gaming startup and valued partner of IEEE FSM SB, supporting our community by promoting innovation, creativity, and engaging interactive experiences.">
             <div class="partner-logo">
               <img src="Logos/funtopia.png" alt="Funtopia Partner Logo"
@@ -2999,7 +3079,7 @@
             <h3>Funtopia</h3>
           </article>
 
-          <article class="partner-card reveal watc-card" data-website="https://www.instagram.com/wearetechnologycenter/"
+<article class="partner-card reveal watc-card" data-website="https://www.instagram.com/wearetechnologycenter/"
             data-details="We Are Technology Center (WATC) is a nationally recognized training center based in Monastir, supporting innovation and technical skill development.">
             <div class="partner-logo">
               <img src="Logos/watc.png" alt="WATC Partner Logo"
@@ -3009,7 +3089,7 @@
             <h3>We Are Technology Center</h3>
           </article>
 
-          <article class="partner-card reveal ithouse-card" data-website="https://www.instagram.com/ithouse.tn/"
+<article class="partner-card reveal ithouse-card" data-website="https://www.instagram.com/ithouse.tn/"
             data-details="IT House is a Tunisian IT group providing technology services and internship opportunities for students.">
             <div class="partner-logo">
               <img src="Logos/ithouse.png" alt="IT House Partner Logo"
@@ -3019,7 +3099,7 @@
             <h3>IT House</h3>
           </article>
 
-          <article class="partner-card reveal castello-card"
+<article class="partner-card reveal castello-card"
             data-website="https://www.instagram.com/castello.salon.de.the/"
             data-details="Castello is a welcoming café that supports our student initiatives by providing a comfortable space for meetings, networking, and collaboration.">
             <div class="partner-logo">
@@ -3054,7 +3134,7 @@
           <button class="year-tab active" data-year="2026" role="tab" aria-selected="true">2026</button>
         </div>
         <div class="timeline">
-          <div class="tl-item" data-year="2024">
+<div class="tl-item" data-year="2024">
             <div class="tl-date">16 October 2024</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3078,7 +3158,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2024">
+<div class="tl-item" data-year="2024">
             <div class="tl-date">31 October 2024</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3103,7 +3183,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">08 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3127,7 +3207,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">12 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3152,7 +3232,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">26 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3177,7 +3257,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">23 November 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3201,7 +3281,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">17 December 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3226,7 +3306,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">19 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3250,7 +3330,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">24 &amp; 25 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3275,7 +3355,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">11 &amp; 12 February 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3299,8 +3379,8 @@
               </div>
             </div>
           </div>
- 
-          <div class="tl-item" data-year="2026">
+
+<div class="tl-item" data-year="2026">
             <div class="tl-date">01 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3325,7 +3405,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">14 &amp; 15 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3350,7 +3430,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">08 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3375,7 +3455,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">19 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3400,7 +3480,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">02 &amp; 03 May 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3444,7 +3524,7 @@
           <p>Smaller communities inside the branch, each focused on a specific field.</p>
         </div>
         <div class="units-grid">
-          <div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
+<div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
             data-details="">
             <div class="unit-logo-img"><img id="cs-logo" src="Logos/ieee-cs-white.svg"
                 alt="Computer Society Chapter Logo" style="width: 200px; height: auto; padding: 25px;"
@@ -3454,7 +3534,7 @@
             <p>Software engineering, AI, and competitive programming, through projects, talks, and contests.</p>
           </div>
 
-          <div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
+<div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
             data-details="">
             <div class="unit-logo-img"><img id="wie-logo" src="Logos/ieee-wie-white.png" alt="Women in Engineering Logo"
                 style="width: 155px; height: auto; padding: 0px;" onerror="this.style.display='none';"></div>
@@ -3515,7 +3595,7 @@
           <h2>Our team</h2>
         </div>
         <div class="team-grid">
-          <div class="team-card">
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/chair.jpg" alt="Branch Chair"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3539,7 +3619,8 @@
               <div class="role">Branch Chair</div>
             </div>
           </div>
-          <div class="team-card">
+
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/vice-chair.jpg" alt="Vice Chair"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3563,7 +3644,8 @@
               <div class="role">Vice Chair</div>
             </div>
           </div>
-          <div class="team-card">
+
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/secretary.jpg" alt="Secretary"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3587,7 +3669,8 @@
               <div class="role">Secretary</div>
             </div>
           </div>
-          <div class="team-card">
+
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/treasurer.jpg" alt="Treasurer"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3611,7 +3694,8 @@
               <div class="role">Treasurer</div>
             </div>
           </div>
-          <div class="team-card">
+
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/media-lead.jpg" alt="Media & Design Lead"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3635,7 +3719,8 @@
               <div class="role">Media Manager</div>
             </div>
           </div>
-          <div class="team-card">
+
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/cs-lead.jpg" alt="CS Chapter Lead"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3659,7 +3744,8 @@
               <div class="role">CS Chapter Chair</div>
             </div>
           </div>
-          <div class="team-card">
+
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/wie-lead.jpg" alt="WIE Lead"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3683,7 +3769,8 @@
               <div class="role">WIE Affinity Group Chair</div>
             </div>
           </div>
-          <div class="team-card">
+
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/events-lead.jpg" alt="Events Coordinator"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3726,61 +3813,19 @@
           <p>Highlights from our workshops, socials, and events. <!-- EDIT: update description --></p>
         </div>
 
-        <div class="gallery-grid">
-          <!-- EDIT: duplicate a .gallery-item per photo. style="--span:2" makes a taller tile for masonry variety -->
-          <div class="gallery-item reveal" style="--span:2;">
-            <img src="assets/gallery/photo-1.jpg" alt="Workshop session"
+        <div class="gallery-slider">
+          <button class="gallery-arrow prev" id="galleryPrev" aria-label="Previous photos" hidden>&#8249;</button>
+          <div class="gallery-grid">
+<div class="gallery-item reveal">
+            <img src="gallery/IMG_4071.JPG" alt="test1"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="gallery-fallback" style="display:none;">Photo</div>
             <div class="gallery-overlay">
-              <span class="gallery-caption">Workshop Session</span>
+              <span class="gallery-caption">test1</span>
             </div>
           </div>
-
-          <div class="gallery-item reveal">
-            <img src="assets/gallery/photo-2.jpg" alt="Team social"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="gallery-fallback" style="display:none;">Photo</div>
-            <div class="gallery-overlay">
-              <span class="gallery-caption">Team Social</span>
-            </div>
-          </div>
-
-          <div class="gallery-item reveal">
-            <img src="assets/gallery/photo-3.jpg" alt="Guest talk"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="gallery-fallback" style="display:none;">Photo</div>
-            <div class="gallery-overlay">
-              <span class="gallery-caption">Guest Talk</span>
-            </div>
-          </div>
-
-          <div class="gallery-item reveal" style="--span:2;">
-            <img src="assets/gallery/photo-4.jpg" alt="Hackathon"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="gallery-fallback" style="display:none;">Photo</div>
-            <div class="gallery-overlay">
-              <span class="gallery-caption">Hackathon Weekend</span>
-            </div>
-          </div>
-
-          <div class="gallery-item reveal">
-            <img src="assets/gallery/photo-5.jpg" alt="Award ceremony"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="gallery-fallback" style="display:none;">Photo</div>
-            <div class="gallery-overlay">
-              <span class="gallery-caption">Award Ceremony</span>
-            </div>
-          </div>
-
-          <div class="gallery-item reveal">
-            <img src="assets/gallery/photo-6.jpg" alt="Coding bootcamp"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="gallery-fallback" style="display:none;">Photo</div>
-            <div class="gallery-overlay">
-              <span class="gallery-caption">Coding Bootcamp</span>
-            </div>
-          </div>
+        </div>
+          <button class="gallery-arrow next" id="galleryNext" aria-label="Next photos" hidden>&#8250;</button>
         </div>
       </div>
     </section>
@@ -4305,6 +4350,41 @@
         if (e.key === 'ArrowRight') showNext();
         if (e.key === 'ArrowLeft') showPrev();
       });
+    })();
+
+
+    // ---------- gallery slider (horizontal scroll + arrows) ----------
+    (function () {
+      const track = document.querySelector('.gallery-grid');
+      const prev = document.getElementById('galleryPrev');
+      const next = document.getElementById('galleryNext');
+      if (!track || !prev || !next) return;
+
+      // Scroll roughly one viewport of tiles at a time.
+      function pageWidth() {
+        const first = track.querySelector('.gallery-item');
+        const step = first ? first.getBoundingClientRect().width + 16 : track.clientWidth;
+        return Math.max(step, track.clientWidth - step);
+      }
+
+      function updateArrows() {
+        const overflow = track.scrollWidth - track.clientWidth > 4;
+        const atStart = track.scrollLeft <= 4;
+        const atEnd = track.scrollLeft >= track.scrollWidth - track.clientWidth - 4;
+        prev.hidden = !overflow || atStart;
+        next.hidden = !overflow || atEnd;
+      }
+
+      prev.addEventListener('click', () => track.scrollBy({ left: -pageWidth(), behavior: 'smooth' }));
+      next.addEventListener('click', () => track.scrollBy({ left: pageWidth(), behavior: 'smooth' }));
+      track.addEventListener('scroll', updateArrows, { passive: true });
+      window.addEventListener('resize', updateArrows);
+
+      // Re-check once images have loaded (their size affects scrollWidth).
+      track.querySelectorAll('img').forEach(img => {
+        if (!img.complete) img.addEventListener('load', updateArrows, { once: true });
+      });
+      updateArrows();
     })();
 
 
