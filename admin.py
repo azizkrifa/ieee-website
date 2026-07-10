@@ -741,8 +741,7 @@ def scoped_paths():
     """The files/folders this tool is allowed to touch — used to scope both
     `git log` (so history shown is relevant) and `git checkout` on revert
     (so reverting never reaches into unrelated parts of the repo)."""
-    candidates = [INDEX_HTML_PATH, ACTIVITIES_IMG_DIR, UNITS_IMG_DIR,
-                  TEAM_IMG_DIR, PARTNERS_IMG_DIR, IMG_DIR]
+    candidates = [REPO_DIR]
     return [p for p in candidates if os.path.exists(p)]
 
 
