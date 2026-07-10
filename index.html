@@ -27,6 +27,7 @@
       const theme = savedTheme || systemTheme;
       document.documentElement.dataset.theme = theme;
       document.documentElement.style.colorScheme = theme;
+      document.documentElement.classList.add('intro-lock');
     })();
   </script>
 
@@ -2839,9 +2840,183 @@
       outline-offset: 2px;
     }
   </style>
+  <style>
+    /* ===================== INTRO / SPLASH ANIMATION ===================== */
+    html.intro-lock,
+    html.intro-lock body {
+      overflow: hidden !important;
+      height: 100%;
+    }
+
+    .intro-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(120% 120% at 50% 40%, #0D2640 0%, #07090F 65%, #05060a 100%);
+      transition: opacity .6s ease, visibility .6s ease;
+    }
+
+    html:not([data-theme="dark"]) .intro-overlay {
+      background: radial-gradient(120% 120% at 50% 40%, #0F3A63 0%, #071726 65%, #04090f 100%);
+    }
+
+    .intro-overlay.intro-hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .intro-aura {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0.85);
+      background: radial-gradient(circle, rgba(0, 98, 155, 0.55) 0%, rgba(0, 98, 155, 0.18) 45%, rgba(0, 98, 155, 0) 72%);
+      filter: blur(6px);
+      animation: auraPulse 2.6s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes auraPulse {
+
+      0%,
+      100% {
+        transform: translate(-50%, -50%) scale(0.85);
+        opacity: .75;
+      }
+
+      50% {
+        transform: translate(-50%, -50%) scale(1.12);
+        opacity: 1;
+      }
+    }
+
+    .intro-content {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 26px;
+    }
+
+    .intro-logo {
+      position: relative;
+      height: 110px;
+      width: auto;
+      display: block;
+      opacity: 0;
+      filter: drop-shadow(0 0 18px rgba(0, 149, 218, 0.65));
+      transform: scale(0.9);
+      transition: transform .9s cubic-bezier(0.16, 1, 0.3, 1), height .9s cubic-bezier(0.16, 1, 0.3, 1),
+        filter .9s ease, opacity .5s ease;
+    }
+
+    .intro-logo.intro-logo-in {
+      opacity: 1;
+      transform: scale(1);
+      animation: logoBreathe 2.6s ease-in-out .5s infinite;
+    }
+
+    @keyframes logoBreathe {
+
+      0%,
+      100% {
+        filter: drop-shadow(0 0 18px rgba(0, 149, 218, 0.55));
+      }
+
+      50% {
+        filter: drop-shadow(0 0 32px rgba(0, 149, 218, 0.9));
+      }
+    }
+
+    .intro-logo.intro-logo-fly {
+      animation: none;
+      position: fixed;
+      z-index: 10001;
+      filter: drop-shadow(0 0 10px rgba(0, 149, 218, 0.4));
+    }
+
+    .intro-text-wrap {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .intro-text {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: clamp(14px, 2.4vw, 20px);
+      letter-spacing: 0.04em;
+      color: #EAF3FA;
+      white-space: pre;
+    }
+
+    .intro-cursor {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: clamp(14px, 2.4vw, 20px);
+      color: #38B6FF;
+      margin-left: 2px;
+      animation: introBlink .85s step-end infinite;
+    }
+
+    .intro-cursor.intro-cursor-hide {
+      opacity: 0;
+      animation: none;
+    }
+
+    @keyframes introBlink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0;
+      }
+    }
+
+    #navIeeeLogo.intro-target-hidden {
+      opacity: 0;
+    }
+
+    .intro-aura,
+    .intro-text-wrap {
+      transition: opacity .4s ease;
+    }
+
+    .intro-decor-hide {
+      opacity: 0 !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .intro-aura,
+      .intro-logo.intro-logo-in {
+        animation: none;
+      }
+    }
+  </style>
 </head>
 
 <body>
+
+  <div class="intro-overlay" id="introOverlay" aria-hidden="true">
+    <div class="intro-aura"></div>
+    <div class="intro-content">
+      <img id="introLogo" class="intro-logo" alt="" src="Logos/ieee-fsm-white.svg">
+      <div class="intro-text-wrap">
+        <span class="intro-text" id="introText"></span><span class="intro-cursor" id="introCursor">|</span>
+      </div>
+    </div>
+  </div>
 
   <div class="cursor-dot" id="cursorDot"></div>
   <div class="cursor-ring" id="cursorRing"></div>
@@ -4031,6 +4206,93 @@
         applyTheme(nextTheme);
       });
     });
+
+    // ---------- intro / splash: typewriter + logo flies into navbar ----------
+    (function () {
+      const overlay = document.getElementById('introOverlay');
+      const introLogo = document.getElementById('introLogo');
+      const introText = document.getElementById('introText');
+      const introCursor = document.getElementById('introCursor');
+      const navLogo = document.getElementById('navIeeeLogo');
+      if (!overlay || !introLogo || !introText || !navLogo) return;
+
+      // Skip entirely for repeat visits within the same session, or reduced-motion users.
+      const prefersReducedMotion = window.matchMedia('(prefers-color-scheme: dark)') &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const alreadyPlayed = sessionStorage.getItem('introPlayed') === '1';
+
+      function endIntro() {
+        overlay.classList.add('intro-hide');
+        navLogo.classList.remove('intro-target-hidden');
+        document.documentElement.classList.remove('intro-lock');
+        sessionStorage.setItem('introPlayed', '1');
+        setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 700);
+      }
+
+      if (prefersReducedMotion || alreadyPlayed) {
+        overlay.remove();
+        document.documentElement.classList.remove('intro-lock');
+        return;
+      }
+
+      // Match the intro logo to whatever logo the navbar is currently using (theme-correct).
+      introLogo.src = navLogo.src;
+
+      // Hide the real nav logo until the flying clone lands on top of it.
+      navLogo.classList.add('intro-target-hidden');
+
+      const message = 'Welcome to IEEE FSM Student Branch';
+      let charIndex = 0;
+      const typeSpeed = 75;
+
+      function typeNext() {
+        if (charIndex <= message.length) {
+          introText.textContent = message.slice(0, charIndex);
+          charIndex++;
+          setTimeout(typeNext, typeSpeed);
+        } else {
+          setTimeout(flyLogoToNav, 1200);
+        }
+      }
+
+      function flyLogoToNav() {
+        introCursor.classList.add('intro-cursor-hide');
+        overlay.querySelector('.intro-aura').classList.add('intro-decor-hide');
+        document.getElementById('introText').closest('.intro-text-wrap').classList.add('intro-decor-hide');
+
+        const startRect = introLogo.getBoundingClientRect();
+        const endRect = navLogo.getBoundingClientRect();
+
+        // Pin the logo in place with fixed positioning, then animate to the nav slot.
+        introLogo.classList.add('intro-logo-fly');
+        introLogo.style.top = startRect.top + 'px';
+        introLogo.style.left = startRect.left + 'px';
+        introLogo.style.height = startRect.height + 'px';
+        introLogo.style.width = 'auto';
+        introLogo.style.margin = '0';
+
+        // Force reflow so the browser registers the start position before animating.
+        // eslint-disable-next-line no-unused-expressions
+        introLogo.offsetHeight;
+
+        requestAnimationFrame(() => {
+          overlay.style.background = 'transparent';
+          introLogo.style.transition = 'top 1.4s cubic-bezier(0.65,0,0.35,1), left 1.4s cubic-bezier(0.65,0,0.35,1), height 1.4s cubic-bezier(0.65,0,0.35,1), filter 1.4s ease';
+          introLogo.style.top = endRect.top + 'px';
+          introLogo.style.left = endRect.left + 'px';
+          introLogo.style.height = endRect.height + 'px';
+          introLogo.style.filter = 'none';
+        });
+
+        setTimeout(endIntro, 1500);
+      }
+
+      // Fade the aura + logo in, then start typing.
+      requestAnimationFrame(() => {
+        introLogo.classList.add('intro-logo-in');
+        setTimeout(typeNext, 900);
+      });
+    })();
 
     // ---------- scroll reveal ----------
     const revealEls = document.querySelectorAll('.reveal, .tl-item, .unit-card, .team-card');
