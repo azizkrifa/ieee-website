@@ -820,7 +820,7 @@ def scoped_paths():
     `git log` (so history shown is relevant) and `git checkout` on revert
     (so reverting never reaches into unrelated parts of the repo)."""
     candidates = [INDEX_HTML_PATH, ACTIVITIES_IMG_DIR, UNITS_IMG_DIR,
-                  TEAM_IMG_DIR, PARTNERS_IMG_DIR, GALLERY_IMG_DIR, IMG_DIR]
+                  TEAM_IMG_DIR, PARTNERS_IMG_DIR, IMG_DIR]
     return [p for p in candidates if os.path.exists(p)]
 
 
