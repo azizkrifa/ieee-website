@@ -765,7 +765,7 @@
       inset: 0;
       z-index: 0;
       opacity: 0.8;
-      animation: signal-breathe 16s ease-in-out infinite alternate;
+      animation: signal-breathe 16s linear infinite;
     }
 
     .hero-signal::before,
@@ -783,7 +783,7 @@
       left: -40px;
       top: 70px;
       background: radial-gradient(circle, rgba(59, 158, 219, 0.22), transparent 68%);
-      animation: orb-float 20s ease-in-out infinite alternate;
+      animation: orb-float 20s linear infinite;
     }
 
     .hero-signal::after {
@@ -792,7 +792,7 @@
       right: -80px;
       bottom: 40px;
       background: radial-gradient(circle, rgba(168, 216, 240, 0.18), transparent 70%);
-      animation: orb-float 26s ease-in-out infinite alternate-reverse;
+      animation: orb-float 26s linear infinite reverse;
     }
 
     .hero-signal svg {
@@ -891,25 +891,35 @@
       }
     }
 
-    @keyframes orb-float {
-      from {
-        transform: translate3d(0, 0, 0) scale(1);
-      }
-
-      to {
-        transform: translate3d(22px, -18px, 0) scale(1.08);
-      }
-    }
 
     @keyframes signal-breathe {
-      from {
+      0% {
         transform: scale(1);
         opacity: 0.7;
       }
 
-      to {
+      50% {
         transform: scale(1.03);
         opacity: 0.95;
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 0.7;
+      }
+    }
+
+    @keyframes orb-float {
+      0% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+
+      50% {
+        transform: translate3d(22px, -18px, 0) scale(1.08);
+      }
+
+      100% {
+        transform: translate3d(0, 0, 0) scale(1);
       }
     }
 
@@ -2919,7 +2929,8 @@
   <div class="mobile-menu" id="mobileMenu">
     <div class="mobile-menu-top">
       <span class="brand" style="color:var(--text);">
-        <img id="mobileNavIeeeLogo" src="Logos/ieee-fsm-white.svg" alt="IEEE FSM SB" style="height:40px; width:auto; filter: none;">
+        <img id="mobileNavIeeeLogo" src="Logos/ieee-fsm-white.svg" alt="IEEE FSM SB"
+          style="height:40px; width:auto; filter: none;">
       </span>
       <button class="btn btn-ghost theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">
         <i class="fa-solid fa-moon"></i>
@@ -2947,7 +2958,7 @@
       <svg viewBox="0 0 1200 700" preserveAspectRatio="none">
         <path d="M-80,390 L110,390 L160,300 L210,470 L290,390 L1280,390" fill="none" stroke="#00629B" stroke-width="2"
           opacity="0.32" stroke-dasharray="10 16"
-          style="--dash-loop: -1088; animation: dash-flow 16s linear infinite;" />
+          style="--dash-loop: -988; animation: dash-flow 16s linear infinite;" />
         <path d="M-40,505 L220,505 L300,575 L360,435 L450,505 L1260,505" fill="none" stroke="#2E8FC2" stroke-width="1.5"
           opacity="0.28" stroke-dasharray="5 10"
           style="--dash-loop: -1005; animation: dash-flow 11s linear infinite reverse;" />
@@ -3038,7 +3049,7 @@
         </div>
 
         <div class="partners-grid">
-<article class="partner-card reveal" data-website="https://fsm.rnu.tn"
+          <article class="partner-card reveal" data-website="https://fsm.rnu.tn"
             data-details="The Faculty of Sciences of Monastir (FSM) is the academic home of our student branch, providing resources, mentorship, and a platform for students to engage in technical and professional development activities.">
             <div class="partner-logo">
               <img src="Logos/fsm.png" alt="FSM Partner Logo"
@@ -3048,7 +3059,7 @@
             <h3>Faculty of Sciences of Monastir</h3>
           </article>
 
-<article class="partner-card reveal" data-website="https://ieee.tn/"
+          <article class="partner-card reveal" data-website="https://ieee.tn/"
             data-details="IEEE Tunisia Section is the local chapter of the global IEEE organization, providing support and resources to our student branch.">
             <div class="partner-logo">
               <img src="Logos/ieee-section.png" alt="IEEE Tunisia Partner Logo"
@@ -3058,7 +3069,7 @@
             <h3>IEEE Tunisia Section</h3>
           </article>
 
-<article class="partner-card reveal tarantinoo-card"
+          <article class="partner-card reveal tarantinoo-card"
             data-website="https://www.instagram.com/tarantino.monastir/"
             data-details="Tarantinoo Café has been one of IEEE FSM SB's trusted partners, supporting our events and providing exclusive offers for our members.">
             <div class="partner-logo">
@@ -3069,7 +3080,7 @@
             <h3>Tarantinoo Cafe</h3>
           </article>
 
-<article class="partner-card reveal funtopia-card" data-website="https://www.instagram.com/funtopia.game/"
+          <article class="partner-card reveal funtopia-card" data-website="https://www.instagram.com/funtopia.game/"
             data-details="Funtopia is a gaming startup and valued partner of IEEE FSM SB, supporting our community by promoting innovation, creativity, and engaging interactive experiences.">
             <div class="partner-logo">
               <img src="Logos/funtopia.png" alt="Funtopia Partner Logo"
@@ -3079,7 +3090,7 @@
             <h3>Funtopia</h3>
           </article>
 
-<article class="partner-card reveal watc-card" data-website="https://www.instagram.com/wearetechnologycenter/"
+          <article class="partner-card reveal watc-card" data-website="https://www.instagram.com/wearetechnologycenter/"
             data-details="We Are Technology Center (WATC) is a nationally recognized training center based in Monastir, supporting innovation and technical skill development.">
             <div class="partner-logo">
               <img src="Logos/watc.png" alt="WATC Partner Logo"
@@ -3089,7 +3100,7 @@
             <h3>We Are Technology Center</h3>
           </article>
 
-<article class="partner-card reveal ithouse-card" data-website="https://www.instagram.com/ithouse.tn/"
+          <article class="partner-card reveal ithouse-card" data-website="https://www.instagram.com/ithouse.tn/"
             data-details="IT House is a Tunisian IT group providing technology services and internship opportunities for students.">
             <div class="partner-logo">
               <img src="Logos/ithouse.png" alt="IT House Partner Logo"
@@ -3099,7 +3110,7 @@
             <h3>IT House</h3>
           </article>
 
-<article class="partner-card reveal castello-card"
+          <article class="partner-card reveal castello-card"
             data-website="https://www.instagram.com/castello.salon.de.the/"
             data-details="Castello is a welcoming café that supports our student initiatives by providing a comfortable space for meetings, networking, and collaboration.">
             <div class="partner-logo">
@@ -3134,7 +3145,7 @@
           <button class="year-tab active" data-year="2026" role="tab" aria-selected="true">2026</button>
         </div>
         <div class="timeline">
-<div class="tl-item" data-year="2024">
+          <div class="tl-item" data-year="2024">
             <div class="tl-date">16 October 2024</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3158,7 +3169,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2024">
+          <div class="tl-item" data-year="2024">
             <div class="tl-date">31 October 2024</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3183,7 +3194,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2025">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">08 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3206,8 +3217,8 @@
               </div>
             </div>
           </div>
- 
-<div class="tl-item" data-year="2025">
+
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">12 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3232,7 +3243,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2025">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">26 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3257,7 +3268,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2025">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">23 November 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3281,7 +3292,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2025">
+          <div class="tl-item" data-year="2025">
             <div class="tl-date">17 December 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3306,7 +3317,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">19 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3330,7 +3341,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">24 &amp; 25 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3355,7 +3366,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">11 &amp; 12 February 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3380,7 +3391,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">01 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3405,7 +3416,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">14 &amp; 15 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3430,7 +3441,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">08 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3455,7 +3466,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">19 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3480,7 +3491,7 @@
             </div>
           </div>
 
-<div class="tl-item" data-year="2026">
+          <div class="tl-item" data-year="2026">
             <div class="tl-date">02 &amp; 03 May 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3514,7 +3525,7 @@
       <span class="divider-dot"></span>
       <span class="divider-line"></span>
     </div>
- 
+
     <!-- ===================== UNITS ===================== -->
     <section class="units" id="units">
       <div class="container">
@@ -3524,7 +3535,7 @@
           <p>Smaller communities inside the branch, each focused on a specific field.</p>
         </div>
         <div class="units-grid">
-<div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
+          <div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
             data-details="">
             <div class="unit-logo-img"><img id="cs-logo" src="Logos/ieee-cs-white.svg"
                 alt="Computer Society Chapter Logo" style="width: 200px; height: auto; padding: 25px;"
@@ -3534,7 +3545,7 @@
             <p>Software engineering, AI, and competitive programming, through projects, talks, and contests.</p>
           </div>
 
-<div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
+          <div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
             data-details="">
             <div class="unit-logo-img"><img id="wie-logo" src="Logos/ieee-wie-white.png" alt="Women in Engineering Logo"
                 style="width: 155px; height: auto; padding: 0px;" onerror="this.style.display='none';"></div>
@@ -3595,7 +3606,7 @@
           <h2>Our team</h2>
         </div>
         <div class="team-grid">
-<div class="team-card">
+          <div class="team-card">
             <div class="team-photo">
               <img src="assets/team/chair.jpg" alt="Branch Chair"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3620,7 +3631,7 @@
             </div>
           </div>
 
-<div class="team-card">
+          <div class="team-card">
             <div class="team-photo">
               <img src="assets/team/vice-chair.jpg" alt="Vice Chair"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3645,7 +3656,7 @@
             </div>
           </div>
 
-<div class="team-card">
+          <div class="team-card">
             <div class="team-photo">
               <img src="assets/team/secretary.jpg" alt="Secretary"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3670,7 +3681,7 @@
             </div>
           </div>
 
-<div class="team-card">
+          <div class="team-card">
             <div class="team-photo">
               <img src="assets/team/treasurer.jpg" alt="Treasurer"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3695,7 +3706,7 @@
             </div>
           </div>
 
-<div class="team-card">
+          <div class="team-card">
             <div class="team-photo">
               <img src="assets/team/media-lead.jpg" alt="Media & Design Lead"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3720,7 +3731,7 @@
             </div>
           </div>
 
-<div class="team-card">
+          <div class="team-card">
             <div class="team-photo">
               <img src="assets/team/cs-lead.jpg" alt="CS Chapter Lead"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3745,7 +3756,7 @@
             </div>
           </div>
 
-<div class="team-card">
+          <div class="team-card">
             <div class="team-photo">
               <img src="assets/team/wie-lead.jpg" alt="WIE Lead"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3770,7 +3781,7 @@
             </div>
           </div>
 
-<div class="team-card">
+          <div class="team-card">
             <div class="team-photo">
               <img src="assets/team/events-lead.jpg" alt="Events Coordinator"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3816,15 +3827,15 @@
         <div class="gallery-slider">
           <button class="gallery-arrow prev" id="galleryPrev" aria-label="Previous photos" hidden>&#8249;</button>
           <div class="gallery-grid">
-<div class="gallery-item reveal">
-            <img src="gallery/IMG_4071.JPG" alt="test1"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="gallery-fallback" style="display:none;">Photo</div>
-            <div class="gallery-overlay">
-              <span class="gallery-caption">test1</span>
+            <div class="gallery-item reveal">
+              <img src="gallery/IMG_4071.JPG" alt="test1"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="gallery-fallback" style="display:none;">Photo</div>
+              <div class="gallery-overlay">
+                <span class="gallery-caption">test1</span>
+              </div>
             </div>
           </div>
-        </div>
           <button class="gallery-arrow next" id="galleryNext" aria-label="Next photos" hidden>&#8250;</button>
         </div>
       </div>
