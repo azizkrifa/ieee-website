@@ -32,93 +32,6 @@
   </script>
 
   <style>
-    /* ===================== CUSTOM CURSOR ===================== */
-    @media (hover: hover) and (pointer: fine) {
-      html {
-        cursor: none;
-      }
-
-      a,
-      button,
-      .unit-card,
-      .team-card,
-      [onclick],
-      input,
-      textarea,
-      select,
-      label {
-        cursor: none;
-      }
-
-      .cursor-dot,
-      .cursor-ring {
-        position: fixed;
-        top: 0;
-        left: 0;
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 10000;
-        transform: translate(-50%, -50%);
-        will-change: transform;
-      }
-
-      .cursor-dot {
-        width: 7px;
-        height: 7px;
-        background: var(--ieee-blue-light);
-        box-shadow: 0 0 10px color-mix(in srgb, var(--ieee-blue-light) 70%, transparent);
-        transition: opacity 0.2s ease, background 0.25s ease;
-      }
-
-      .cursor-ring {
-        width: 34px;
-        height: 34px;
-        border: 1.5px solid var(--ieee-blue-light);
-        opacity: 0.55;
-        transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-          height 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-          opacity 0.25s ease,
-          border-color 0.25s ease,
-          background 0.25s ease;
-      }
-
-      /* grow + fill on interactive elements */
-      body.cursor-hover .cursor-ring {
-        width: 54px;
-        height: 54px;
-        background: color-mix(in srgb, var(--ieee-blue-light) 12%, transparent);
-        border-color: var(--ieee-blue-light);
-        opacity: 0.9;
-      }
-
-      body.cursor-hover .cursor-dot {
-        opacity: 0;
-      }
-
-      /* click feedback */
-      body.cursor-active .cursor-ring {
-        width: 28px;
-        height: 28px;
-        opacity: 1;
-      }
-
-      /* fade out when leaving the window */
-      body.cursor-hidden .cursor-dot,
-      body.cursor-hidden .cursor-ring {
-        opacity: 0;
-      }
-    }
-
-    @media (hover: none),
-    (pointer: coarse) {
-
-      .cursor-dot,
-      .cursor-ring {
-        display: none;
-      }
-    }
-
-
     /* ===================== HERO ENTRANCE ANIMATION ===================== */
     @keyframes heroFadeUp {
       from {
@@ -265,7 +178,10 @@
       margin: 0;
       position: relative;
       overflow-x: hidden;
-      background: var(--navy-deep);
+      /* Single, continuous page background (light mode). Sections are transparent
+         so this one treatment spans the whole page. */
+      background: linear-gradient(180deg, #FBFDFF 0%, #F4F8FC 100%);
+      background-attachment: fixed;
       color: var(--text);
       font-family: var(--font-body);
       line-height: 1.55;
@@ -290,6 +206,22 @@
 
     section {
       position: relative;
+    }
+
+    /* ===================== UNIFIED PAGE BACKGROUND =====================
+       One continuous background lives on <body>. Every top-level section
+       is transparent so the page reads as a single surface, differentiated
+       only by spacing — not by color.
+       Cards and panels keep their own surfaces for contrast. */
+    .hero,
+    .about,
+    .activities,
+    .partners,
+    .units,
+    .team,
+    .gallery,
+    .join {
+      background: transparent;
     }
 
     .hero .container,
@@ -444,18 +376,6 @@
       stroke-linejoin: round;
     }
 
-    /* ===================== SCROLL PROGRESS ===================== */
-    .scroll-progress {
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 3px;
-      width: 0%;
-      background: linear-gradient(90deg, var(--ieee-blue), var(--accent));
-      z-index: 1000;
-      transition: width .08s linear;
-    }
-
     /* ===================== ACTIVE NAV LINK ===================== */
     .nav-links a {
       transition: color 0.25s ease;
@@ -472,68 +392,6 @@
     /* keep the same underline behavior on mobile menu too, optional but consistent */
     .mobile-menu nav a.active-link {
       color: var(--accent);
-    }
-
-    /* ── charging progress bar ── */
-    .scroll-progress {
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 4px;
-      width: 0%;
-      z-index: 9999;
-      transition: width .1s linear;
-      background: linear-gradient(90deg,
-          #00629B 0%,
-          #2E8FC2 30%,
-          #60B8EE 60%,
-          #A8D8F0 80%,
-          #60B8EE 100%);
-      background-size: 200% 100%;
-      animation: charge-shimmer 1.4s linear infinite;
-      box-shadow:
-        0 0 6px rgba(96, 184, 238, 0.9),
-        0 0 18px rgba(96, 184, 238, 0.5),
-        0 0 36px rgba(96, 184, 238, 0.2);
-      border-radius: 0 3px 3px 0;
-    }
-
-    @keyframes charge-shimmer {
-      0% {
-        background-position: 200% 0;
-      }
-
-      100% {
-        background-position: -200% 0;
-      }
-    }
-
-    .scroll-progress::after {
-      content: '';
-      position: absolute;
-      right: -2px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #A8D8F0;
-      box-shadow:
-        0 0 6px 2px rgba(96, 184, 238, 1),
-        0 0 14px 4px rgba(96, 184, 238, 0.7);
-      animation: tip-pulse 1s ease-in-out infinite alternate;
-    }
-
-    @keyframes tip-pulse {
-      from {
-        opacity: 0.7;
-        transform: translateY(-50%) scale(0.85);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(-50%) scale(1.2);
-      }
     }
 
     /* ===================== NAV ===================== */
@@ -751,10 +609,6 @@
       min-height: 100vh;
       display: flex;
       align-items: center;
-      background:
-        radial-gradient(120% 100% at 12% 0%, rgba(96, 184, 238, 0.18) 0%, rgba(96, 184, 238, 0.05) 34%, transparent 62%),
-        radial-gradient(90% 80% at 100% 10%, rgba(168, 216, 240, 0.16) 0%, transparent 45%),
-        linear-gradient(180deg, #FBFDFF 0%, #F4F8FC 100%);
       color: var(--text-on-dark);
       padding-top: var(--nav-h);
       overflow: hidden;
@@ -927,7 +781,6 @@
     /* ===================== ABOUT ===================== */
     .about {
       padding: 110px 0;
-      background: #F7FAFD;
     }
 
     .about-grid {
@@ -1047,63 +900,9 @@
       line-height: 1.3;
     }
 
-    /* ===================== SECTION DIVIDER ===================== */
-    .section-divider {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      padding: 48px 0;
-      background: var(--bg);
-    }
-
-    .section-divider .divider-line {
-      width: 120px;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--line) 50%, transparent);
-      position: relative;
-    }
-
-    .section-divider .divider-line::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, transparent, var(--ieee-blue-light), transparent);
-      opacity: 0;
-      animation: dividerGlow 4s ease-in-out infinite;
-    }
-
-    .section-divider .divider-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--ieee-blue-light);
-      box-shadow: 0 0 12px color-mix(in srgb, var(--ieee-blue-light) 60%, transparent);
-      flex-shrink: 0;
-    }
-
-    @keyframes dividerGlow {
-
-      0%,
-      100% {
-        opacity: 0;
-      }
-
-      50% {
-        opacity: 0.6;
-      }
-    }
-
-    @media (max-width: 560px) {
-      .section-divider .divider-line {
-        width: 60px;
-      }
-    }
-
     /* ===================== PARTNERS ===================== */
     .partners {
       padding: 110px 0;
-      background: #F1F7FD;
     }
 
     .partners-grid {
@@ -1113,74 +912,52 @@
       gap: 20px;
     }
 
-    .partner-card {
-      flex: 0 1 210px;
-      max-width: 240px;
-      border: 1px solid rgba(17, 32, 51, 0.1);
-      border-radius: var(--radius);
-      background: var(--surface);
-      padding: 26px 20px;
-      margin-top: 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: transform .3s ease, box-shadow .3s ease;
+    .partners-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 34px 52px;
+      margin-top: 44px;
     }
 
-    .partner-card:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 18px rgba(59, 158, 219, 0.10);
-    }
-
-    .partner-logo {
-      width: 84px;
-      height: 84px;
-      margin: 0 auto 14px;
-      border-radius: 16px;
-      background: linear-gradient(145deg, #F7FBFF, #EAF3FB);
-      border: 1px solid rgba(59, 158, 219, 0.18);
+    /* Plain logo tiles — grayscale by default, full colour on hover
+       (reference: https://insat.ieee.tn/). */
+    .partner-tile {
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
+      width: 150px;
+      height: 84px;
+      padding: 6px;
     }
 
-    .partner-logo img {
-      width: 100%;
-      height: 100%;
+    .partner-tile img {
+      max-width: 100%;
+      max-height: 100%;
       object-fit: contain;
-      padding: 12px;
-      transition: transform .35s ease;
-      transform-origin: center;
+      filter: grayscale(100%);
+      opacity: 0.55;
+      transition: filter 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
     }
 
-    .partner-card:hover .partner-logo img {
-      transform: scale(1.20);
+    .partner-tile:hover img,
+    .partner-tile:focus-visible img {
+      filter: grayscale(0%);
+      opacity: 1;
+      transform: scale(1.06);
     }
 
-    .partner-logo .partner-fallback {
+    .partner-fallback {
       display: none;
-      width: 100%;
-      height: 100%;
       align-items: center;
       justify-content: center;
+      width: 100%;
+      height: 100%;
       font-family: var(--font-mono);
-      font-size: 18px;
-      letter-spacing: 0.08em;
-      color: #1D6EA9;
-      background: linear-gradient(145deg, #F7FBFF, #EAF3FB);
-    }
-
-    .partner-card h3 {
-      font-size: 16px;
-      color: #105B98;
-      margin-top: 4px;
-    }
-
-    .partner-card p {
-      margin-top: 8px;
-      font-size: 13.5px;
+      font-size: 15px;
+      letter-spacing: 0.06em;
       color: var(--text-muted);
-      line-height: 1.45;
     }
 
     .partner-panel-divider {
@@ -1191,45 +968,9 @@
       opacity: 0.6;
     }
 
-    #partnerPanelLogo.ithouse-card img {
-      height: 150px;
-      width: auto;
-    }
-
-    #partnerPanelLogo.funtopia-card img {
-      margin-bottom: 20px;
-    }
-
-    html:not([data-theme="dark"]) .tarantinoo-card img,
-    html:not([data-theme="dark"]) .watc-card img,
-    html:not([data-theme="dark"]) .ithouse-card img,
-    html:not([data-theme="dark"]) .funtopia-card img,
-    html:not([data-theme="dark"]) .castello-card img,
-    html:not([data-theme="dark"]) #partnerPanelLogo.tarantinoo-card img,
-    html:not([data-theme="dark"]) #partnerPanelLogo.watc-card img,
-    html:not([data-theme="dark"]) #partnerPanelLogo.ithouse-card img,
-    html:not([data-theme="dark"]) #partnerPanelLogo.funtopia-card img,
-    html:not([data-theme="dark"]) #partnerPanelLogo.castello-card img {
-      filter: brightness(0);
-    }
-
-    html[data-theme="dark"] .tarantinoo-card img,
-    html[data-theme="dark"] .watc-card img,
-    html[data-theme="dark"] .ithouse-card img,
-    html[data-theme="dark"] .funtopia-card img,
-    html[data-theme="dark"] .castello-card img,
-    html[data-theme="dark"] #partnerPanelLogo.tarantinoo-card img,
-    html[data-theme="dark"] #partnerPanelLogo.watc-card img,
-    html[data-theme="dark"] #partnerPanelLogo.ithouse-card img,
-    html[data-theme="dark"] #partnerPanelLogo.funtopia-card img,
-    html[data-theme="dark"] #partnerPanelLogo.castello-card img {
-      filter: none;
-    }
-
     /* ===================== ACTIVITIES (timeline) ===================== */
     .activities {
       padding: 110px 0;
-      background: #FFFFFF;
     }
 
     .timeline {
@@ -1330,21 +1071,10 @@
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background: linear-gradient(90deg,
-          #00629B 0%,
-          #2E8FC2 30%,
-          #60B8EE 60%,
-          #A8D8F0 80%,
-          #60B8EE 100%);
-      background-size: 200% 100%;
-      animation: node-zoom 1.25s ease-in-out infinite, charge-shimmer 1.4s linear infinite;
+      background: var(--ieee-blue);
       border: none;
       position: relative;
       z-index: 2;
-      box-shadow:
-        0 0 6px rgba(96, 184, 238, 0.9),
-        0 0 18px rgba(96, 184, 238, 0.5),
-        0 0 36px rgba(96, 184, 238, 0.2);
     }
 
     .tl-card:hover {
@@ -1450,7 +1180,6 @@
     /* ===================== UNITS ===================== */
     .units {
       padding: 110px 0;
-      background: #F7FAFD;
     }
 
     .units-grid {
@@ -1734,7 +1463,6 @@
     /* ===================== TEAM ===================== */
     .team {
       padding: 110px 0;
-      background: #EEF5FB;
     }
 
     .team-grid {
@@ -1802,47 +1530,6 @@
       border-radius: 50%;
       border: 1px solid rgba(96, 184, 238, 0.4);
       animation: pulse-ring 2.6s ease-in-out infinite;
-    }
-
-    @keyframes node-zoom {
-
-      0%,
-      100% {
-        transform: scale(0.88);
-      }
-
-      50% {
-        transform: scale(1.18);
-      }
-    }
-
-    @keyframes node-ring {
-
-      0%,
-      100% {
-        transform: scale(0.88);
-        opacity: 0.32;
-      }
-
-      50% {
-        transform: scale(1.24);
-        opacity: 0.75;
-      }
-
-    }
-
-    @keyframes node-glow {
-
-      0%,
-      100% {
-        transform: scale(0.7);
-        opacity: 0.14;
-      }
-
-      50% {
-        transform: scale(1.08);
-        opacity: 0.42;
-      }
     }
 
     .team-overlay {
@@ -1957,48 +1644,62 @@
     /* ===================== GALLERY ===================== */
     .gallery {
       padding: 110px 0;
-      background: #F7FAFD;
     }
 
-    html[data-theme="dark"] .gallery {
-      background: var(--navy-deep);
+    .gallery-tagline {
+      margin-top: 6px;
+      font-family: var(--font-display);
+      font-size: clamp(20px, 2.4vw, 28px);
+      font-weight: 600;
+      color: var(--ieee-blue-light);
     }
 
-    .gallery-slider {
+    /* Auto-scrolling, seamlessly looping photo marquee (reference: insat.ieee.tn). */
+    .gallery-marquee {
       position: relative;
-      margin-top: 44px;
+      margin-top: 20px;
+      overflow: hidden;
+      /* fade the left/right edges so slides ease in and out */
+      -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
     }
 
-    .gallery-grid {
-      display: grid;
-      grid-auto-flow: column;
-      grid-template-rows: repeat(2, 1fr);
-      grid-auto-columns: clamp(240px, 26vw, 340px);
-      height: 520px;
-      gap: 16px;
-      overflow-x: auto;
-      scroll-behavior: smooth;
-      scroll-snap-type: x mandatory;
-      padding: 4px;
-      -ms-overflow-style: none;
-      scrollbar-width: none;
+    .gallery-marquee:first-of-type {
+      margin-top: 40px;
     }
 
-    .gallery-grid::-webkit-scrollbar {
-      display: none;
+    .gallery-track {
+      display: flex;
+      width: max-content;
+      will-change: transform;
+      animation: gallery-scroll 45s linear infinite;
     }
 
-    .gallery-item {
-      position: relative;
-      scroll-snap-align: start;
+    /* second row scrolls the opposite direction */
+    .gallery-track--reverse {
+      animation-name: gallery-scroll-reverse;
+    }
+
+    /* pause on hover so people can look at a photo */
+    .gallery-marquee:hover .gallery-track {
+      animation-play-state: paused;
+    }
+
+    .gallery-slide {
+      flex: 0 0 auto;
+      width: clamp(240px, 30vw, 360px);
+      height: 260px;
+      /* spacing lives on the slide (not a flex gap) so a -50% translate lands
+         on an exact slide boundary and the loop is seamless */
+      margin-right: 20px;
       border-radius: var(--radius);
       overflow: hidden;
-      cursor: pointer;
-      background: var(--surface2);
       border: 1px solid var(--line);
+      background: var(--surface2);
+      cursor: pointer;
     }
 
-    .gallery-item img {
+    .gallery-slide img {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -2006,60 +1707,14 @@
       transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .gallery-item:hover img {
-      transform: scale(1.08);
-    }
-
-    /* Reveal starts hidden; inside the horizontal slider an item can sit
-       off-screen and never trigger the observer, so keep gallery items shown. */
-    .gallery-item.reveal {
-      opacity: 1;
-      transform: none;
-    }
-
-    .gallery-arrow {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      border: 1px solid var(--line);
-      background: var(--surface);
-      color: var(--text);
-      font-size: 26px;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 5;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
-      transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
-    }
-
-    .gallery-arrow:hover {
-      background: var(--ieee-blue);
-      color: #fff;
-      transform: translateY(-50%) scale(1.08);
-    }
-
-    .gallery-arrow.prev {
-      left: -18px;
-    }
-
-    .gallery-arrow.next {
-      right: -18px;
-    }
-
-    /* Hidden when there's nothing to scroll to in that direction. */
-    .gallery-arrow[hidden] {
-      display: none;
+    .gallery-slide:hover img {
+      transform: scale(1.06);
     }
 
     .gallery-fallback {
       width: 100%;
       height: 100%;
+      display: flex;
       align-items: center;
       justify-content: center;
       color: var(--text-muted);
@@ -2070,49 +1725,41 @@
         var(--surface2);
     }
 
-    .gallery-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: flex-end;
-      padding: 16px;
-      background: linear-gradient(to top, rgba(0, 24, 41, 0.75) 5%, transparent 65%);
-      opacity: 0;
-      transition: opacity 0.3s ease;
+    /* Track is duplicated in the markup, so -50% scrolls exactly one full set
+       and then repeats seamlessly. */
+    @keyframes gallery-scroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
     }
 
-    .gallery-item:hover .gallery-overlay {
-      opacity: 1;
+    @keyframes gallery-scroll-reverse {
+      from { transform: translateX(-50%); }
+      to { transform: translateX(0); }
     }
 
-    .gallery-caption {
-      color: #fff;
-      font-size: 13.5px;
-      font-weight: 600;
-    }
-
-    /* ── lightbox ── */
-    .lightbox {
+    /* ── gallery lightbox ── */
+    .glightbox {
       position: fixed;
       inset: 0;
-      background: rgba(5, 8, 14, 0.94);
+      z-index: 2000;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 2000;
+      padding: 40px;
+      background: rgba(5, 8, 14, 0.92);
       opacity: 0;
       visibility: hidden;
       transition: opacity 0.3s ease, visibility 0.3s ease;
     }
 
-    .lightbox.active {
+    .glightbox.active {
       opacity: 1;
       visibility: visible;
     }
 
-    .lightbox-img {
-      max-width: min(88vw, 1100px);
-      max-height: 82vh;
+    .glightbox-img {
+      max-width: min(90vw, 1100px);
+      max-height: 85vh;
       object-fit: contain;
       border-radius: 10px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
@@ -2120,28 +1767,22 @@
       transition: transform 0.3s ease;
     }
 
-    .lightbox.active .lightbox-img {
+    .glightbox.active .glightbox-img {
       transform: scale(1);
     }
 
-    .lightbox-caption {
+    .glightbox-close {
       position: absolute;
-      bottom: 32px;
-      left: 0;
-      right: 0;
-      text-align: center;
-      color: #fff;
-      font-size: 14px;
-      opacity: 0.85;
-    }
-
-    .lightbox-close,
-    .lightbox-nav {
-      position: absolute;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #fff;
+      top: 24px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      font-size: 24px;
+      line-height: 1;
       border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -2149,79 +1790,32 @@
       transition: background 0.2s ease, transform 0.2s ease;
     }
 
-    .lightbox-close {
-      top: 24px;
-      right: 24px;
-      width: 44px;
-      height: 44px;
-      font-size: 22px;
-    }
-
-    .lightbox-nav {
-      top: 50%;
-      transform: translateY(-50%);
-      width: 52px;
-      height: 52px;
-      font-size: 28px;
-    }
-
-    .lightbox-prev {
-      left: 24px;
-    }
-
-    .lightbox-next {
-      right: 24px;
-    }
-
-    .lightbox-close:hover,
-    .lightbox-nav:hover {
+    .glightbox-close:hover {
       background: var(--ieee-blue-light);
-      transform: translateY(-50%) scale(1.08);
-    }
-
-    .lightbox-close:hover {
       transform: scale(1.08);
     }
 
+    /* Reduced motion: no auto-scroll — let people scroll the row by hand. */
+    @media (prefers-reduced-motion: reduce) {
+      .gallery-marquee {
+        overflow-x: auto;
+      }
+
+      .gallery-track {
+        animation: none;
+      }
+    }
+
     @media (max-width: 767px) {
-      .gallery-grid {
-        height: 70vh;
-        grid-auto-columns: 72vw;
-      }
-
-      .gallery-arrow {
-        width: 42px;
-        height: 42px;
-        font-size: 22px;
-      }
-
-      .gallery-arrow.prev {
-        left: 6px;
-      }
-
-      .gallery-arrow.next {
-        right: 6px;
-      }
-
-      .lightbox-nav {
-        width: 42px;
-        height: 42px;
-        font-size: 22px;
-      }
-
-      .lightbox-prev {
-        left: 10px;
-      }
-
-      .lightbox-next {
-        right: 10px;
+      .gallery-slide {
+        width: 78vw;
+        height: 220px;
       }
     }
 
     /* ===================== JOIN ===================== */
     .join {
       padding: 110px 0;
-      background: radial-gradient(130% 110% at 90% 0%, rgba(96, 184, 238, 0.10) 0%, #F7FAFD 62%);
       color: var(--text-on-dark);
     }
 
@@ -2320,7 +1914,7 @@
 
     /* ===================== FOOTER ===================== */
     footer {
-      background: #EAF2F9;
+      background: transparent;
       color: var(--text-muted);
       padding: 50px 0 30px;
       border-top: 1.5px solid rgba(17, 32, 51, 0.08);
@@ -2394,6 +1988,13 @@
       --text-on-dark-muted: #7D94A8;
     }
 
+    /* Single, continuous page background (dark mode) — the hero's dark-blue
+       radial gradient, applied once to the whole page. */
+    html[data-theme="dark"] body {
+      background: radial-gradient(130% 110% at 10% 0%, #0D2640 0%, #07090F 65%);
+      background-attachment: fixed;
+    }
+
     html[data-theme="dark"] .nav.scrolled {
       background: rgba(13, 17, 23, 0.92);
       border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -2428,14 +2029,6 @@
       border-color: rgba(234, 242, 247, 0.35);
     }
 
-    html[data-theme="dark"] .hero {
-      background: radial-gradient(130% 110% at 10% 0%, #0D2640 0%, #07090F 65%);
-    }
-
-    html[data-theme="dark"] .about {
-      background: var(--surface);
-    }
-
     html[data-theme="dark"] .about-visual {
       border-color: rgba(255, 255, 255, 0.07);
     }
@@ -2455,34 +2048,20 @@
       border-right: 1px solid rgba(255, 255, 255, 0.07);
     }
 
-    html[data-theme="dark"] .activities {
-      background: var(--navy-deep);
+    /* On the dark-blue background, keep logos as plain grayscale (preserves
+       detail for solid emblems like FSM), then full colour on hover. */
+    html[data-theme="dark"] .partner-tile img {
+      filter: grayscale(100%);
+      opacity: 0.6;
     }
 
-    html[data-theme="dark"] .partners {
-      background: var(--surface);
+    html[data-theme="dark"] .partner-tile:hover img,
+    html[data-theme="dark"] .partner-tile:focus-visible img {
+      filter: none;
+      opacity: 1;
     }
 
-    html[data-theme="dark"] .partner-card {
-      background: var(--surface2);
-      border-color: rgba(255, 255, 255, 0.08);
-    }
-
-    html[data-theme="dark"] .partner-card:hover {
-      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-    }
-
-    html[data-theme="dark"] .partner-logo {
-      background: linear-gradient(145deg, #162130, #101827);
-      border-color: rgba(96, 184, 238, 0.28);
-    }
-
-    html[data-theme="dark"] .partner-logo .partner-fallback {
-      background: linear-gradient(145deg, #162130, #101827);
-      color: #8CC8ED;
-    }
-
-    html[data-theme="dark"] .partner-card h3 {
+    html[data-theme="dark"] .partner-fallback {
       color: #8CC8ED;
     }
 
@@ -2498,10 +2077,6 @@
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
     }
 
-    html[data-theme="dark"] .units {
-      background: var(--surface);
-    }
-
     html[data-theme="dark"] .unit-card {
       border-color: rgba(255, 255, 255, 0.07);
     }
@@ -2512,10 +2087,6 @@
 
     html[data-theme="dark"] .unit-icon {
       background: color-mix(in srgb, var(--unit-color, var(--ieee-blue-light)) 14%, #0D1117);
-    }
-
-    html[data-theme="dark"] .team {
-      background: var(--navy-deep);
     }
 
     html[data-theme="dark"] .team-card {
@@ -2545,10 +2116,6 @@
       color: #fff;
     }
 
-    html[data-theme="dark"] .join {
-      background: radial-gradient(130% 110% at 90% 0%, #0D2640 0%, var(--navy-deep) 65%);
-    }
-
     html[data-theme="dark"] .join h2 {
       color: #fff;
     }
@@ -2559,7 +2126,7 @@
     }
 
     html[data-theme="dark"] footer {
-      background: #07090F;
+      background: transparent;
       color: var(--text-on-dark-muted);
       border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
@@ -3026,10 +2593,6 @@
     </div>
   </div>
 
-  <div class="cursor-dot" id="cursorDot"></div>
-  <div class="cursor-ring" id="cursorRing"></div>
-  <div class="scroll-progress" id="scrollProgress"></div>
-
   <!-- icon sprite -->
   <svg style="display:none">
     <symbol id="i-bolt" viewBox="0 0 24 24">
@@ -3216,12 +2779,6 @@
         </div>
       </div>
     </section>
-    <!-- ===================== SECTION DIVIDER ===================== -->
-    <div class="section-divider" aria-hidden="true">
-      <span class="divider-line"></span>
-      <span class="divider-dot"></span>
-      <span class="divider-line"></span>
-    </div>
     <!-- ===================== PARTNERS ===================== -->
     <section class="partners" id="partners">
       <div class="container">
@@ -3232,87 +2789,72 @@
         </div>
 
         <div class="partners-grid">
-          <article class="partner-card reveal" data-website="https://fsm.rnu.tn"
-            data-details="The Faculty of Sciences of Monastir (FSM) is the academic home of our student branch, providing resources, mentorship, and a platform for students to engage in technical and professional development activities.">
-            <div class="partner-logo">
-              <img src="Logos/fsm.png" alt="FSM Partner Logo"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <span class="partner-fallback">FSM</span>
-            </div>
-            <h3>Faculty of Sciences of Monastir</h3>
-          </article>
+<a class="partner-tile reveal" href="https://fsm.rnu.tn" target="_blank" rel="noopener"
+            title="Faculty of Sciences of Monastir" aria-label="Faculty of Sciences of Monastir">
+            <img src="Logos/fsm.png" alt="Faculty of Sciences of Monastir logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">FSM</span>
+          </a>
 
-          <article class="partner-card reveal" data-website="https://ieee.tn/"
-            data-details="IEEE Tunisia Section is the local chapter of the global IEEE organization, providing support and resources to our student branch.">
-            <div class="partner-logo">
-              <img src="Logos/ieee-section.png" alt="IEEE Tunisia Partner Logo"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <span class="partner-fallback">IEEE</span>
-            </div>
-            <h3>IEEE Tunisia Section</h3>
-          </article>
+<a class="partner-tile reveal" href="https://ieee.tn/" target="_blank" rel="noopener"
+            title="IEEE Tunisia Section" aria-label="IEEE Tunisia Section">
+            <img src="Logos/ieee-section.png" alt="IEEE Tunisia Section logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">IEEE</span>
+          </a>
 
-          <article class="partner-card reveal tarantinoo-card"
-            data-website="https://www.instagram.com/tarantino.monastir/"
-            data-details="Tarantinoo Café has been one of IEEE FSM SB's trusted partners, supporting our events and providing exclusive offers for our members.">
-            <div class="partner-logo">
-              <img src="Logos/tarantinoo.png" alt="Tarantinoo Partner Logo"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <span class="partner-fallback">Tarantinoo</span>
-            </div>
-            <h3>Tarantinoo Cafe</h3>
-          </article>
+<a class="partner-tile reveal" href="https://www.instagram.com/tarantino.monastir/" target="_blank"
+            rel="noopener" title="Tarantinoo Cafe" aria-label="Tarantinoo Cafe">
+            <img src="Logos/tarantinoo.png" alt="Tarantinoo Cafe logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">Tarantinoo</span>
+          </a>
 
-          <article class="partner-card reveal funtopia-card" data-website="https://www.instagram.com/funtopia.game/"
-            data-details="Funtopia is a gaming startup and valued partner of IEEE FSM SB, supporting our community by promoting innovation, creativity, and engaging interactive experiences.">
-            <div class="partner-logo">
-              <img src="Logos/funtopia.png" alt="Funtopia Partner Logo"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <span class="partner-fallback">Funtopia</span>
-            </div>
-            <h3>Funtopia</h3>
-          </article>
+<a class="partner-tile reveal" href="https://www.instagram.com/funtopia.game/" target="_blank" rel="noopener"
+            title="Funtopia" aria-label="Funtopia">
+            <img src="Logos/funtopia.png" alt="Funtopia logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">Funtopia</span>
+          </a>
 
-          <article class="partner-card reveal watc-card" data-website="https://www.instagram.com/wearetechnologycenter/"
-            data-details="We Are Technology Center (WATC) is a nationally recognized training center based in Monastir, supporting innovation and technical skill development.">
-            <div class="partner-logo">
-              <img src="Logos/watc.png" alt="WATC Partner Logo"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <span class="partner-fallback">WATC</span>
-            </div>
-            <h3>We Are Technology Center</h3>
-          </article>
+<a class="partner-tile reveal" href="https://www.instagram.com/wearetechnologycenter/" target="_blank"
+            rel="noopener" title="We Are Technology Center" aria-label="We Are Technology Center">
+            <img src="Logos/watc.png" alt="We Are Technology Center logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">WATC</span>
+          </a>
 
-          <article class="partner-card reveal ithouse-card" data-website="https://www.instagram.com/ithouse.tn/"
-            data-details="IT House is a Tunisian IT group providing technology services and internship opportunities for students.">
-            <div class="partner-logo">
-              <img src="Logos/ithouse.png" alt="IT House Partner Logo"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <span class="partner-fallback">IT House</span>
-            </div>
-            <h3>IT House</h3>
-          </article>
+<a class="partner-tile reveal" href="https://www.instagram.com/ithouse.tn/" target="_blank" rel="noopener"
+            title="IT House" aria-label="IT House">
+            <img src="Logos/ithouse.png" alt="IT House logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">IT House</span>
+          </a>
 
-          <article class="partner-card reveal castello-card"
-            data-website="https://www.instagram.com/castello.salon.de.the/"
-            data-details="Castello is a welcoming café that supports our student initiatives by providing a comfortable space for meetings, networking, and collaboration.">
-            <div class="partner-logo">
-              <img src="Logos/castello.png" alt="Castello Partner Logo"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <span class="partner-fallback">Castello</span>
-            </div>
-            <h3>Castello</h3>
-          </article>
+<a class="partner-tile reveal" href="https://www.instagram.com/castello.salon.de.the/" target="_blank"
+            rel="noopener" title="Castello" aria-label="Castello">
+            <img src="Logos/castello.png" alt="Castello logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">Castello</span>
+          </a>
+
+<a class="partner-tile reveal" href="ZEFZEF" target="_blank" rel="noopener"
+            title="EZDZEF" aria-label="EZDZEF">
+            <img src="Logos/wlogo.png" alt="EZDZEF logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">ZEF</span>
+          </a>
+
+          <a class="partner-tile reveal" href="sdff" target="_blank" rel="noopener"
+            title="dsfs" aria-label="dsfs">
+            <img src="Logos/Layer_7.png" alt="dsfs logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">dsf</span>
+          </a>
         </div>
       </div>
     </section>
 
-    <!-- ===================== SECTION DIVIDER ===================== -->
-    <div class="section-divider" aria-hidden="true">
-      <span class="divider-line"></span>
-      <span class="divider-dot"></span>
-      <span class="divider-line"></span>
-    </div>
 
     <!-- ===================== ACTIVITIES ===================== -->
     <section class="activities" id="activities">
@@ -3328,7 +2870,7 @@
           <button class="year-tab active" data-year="2026" role="tab" aria-selected="true">2026</button>
         </div>
         <div class="timeline">
-          <div class="tl-item" data-year="2024">
+<div class="tl-item" data-year="2024">
             <div class="tl-date">16 October 2024</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3352,7 +2894,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2024">
+<div class="tl-item" data-year="2024">
             <div class="tl-date">31 October 2024</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3377,7 +2919,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">08 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3401,7 +2943,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">12 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3426,7 +2968,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">26 October 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3451,7 +2993,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">23 November 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3475,7 +3017,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2025">
+<div class="tl-item" data-year="2025">
             <div class="tl-date">17 December 2025</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3500,7 +3042,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">19 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3524,7 +3066,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">24 &amp; 25 January 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3549,7 +3091,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">11 &amp; 12 February 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3574,7 +3116,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">01 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3599,7 +3141,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">14 &amp; 15 March 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3624,7 +3166,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">08 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3649,7 +3191,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">19 April 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3674,7 +3216,7 @@
             </div>
           </div>
 
-          <div class="tl-item" data-year="2026">
+<div class="tl-item" data-year="2026">
             <div class="tl-date">02 &amp; 03 May 2026</div>
             <div class="tl-node-col">
               <div class="tl-node"></div>
@@ -3702,12 +3244,6 @@
       </div>
     </section>
 
-    <!-- ===================== SECTION DIVIDER ===================== -->
-    <div class="section-divider" aria-hidden="true">
-      <span class="divider-line"></span>
-      <span class="divider-dot"></span>
-      <span class="divider-line"></span>
-    </div>
 
     <!-- ===================== UNITS ===================== -->
     <section class="units" id="units">
@@ -3718,7 +3254,7 @@
           <p>Smaller communities inside the branch, each focused on a specific field.</p>
         </div>
         <div class="units-grid">
-          <div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
+<div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
             data-details="">
             <div class="unit-logo-img"><img id="cs-logo" src="Logos/ieee-cs-white.svg"
                 alt="Computer Society Chapter Logo" style="width: 200px; height: auto; padding: 25px;"
@@ -3728,7 +3264,7 @@
             <p>Software engineering, AI, and competitive programming, through projects, talks, and contests.</p>
           </div>
 
-          <div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
+<div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
             data-details="">
             <div class="unit-logo-img"><img id="wie-logo" src="Logos/ieee-wie-white.png" alt="Women in Engineering Logo"
                 style="width: 155px; height: auto; padding: 0px;" onerror="this.style.display='none';"></div>
@@ -3757,29 +3293,6 @@
       </div>
     </aside>
 
-    <div class="unit-overlay" id="partnerOverlay"></div>
-
-    <aside class="unit-panel" id="partnerPanel">
-      <div class="unit-panel-top" id="partnerPanelTop"></div>
-      <button class="unit-panel-close" id="partnerPanelClose">&times;</button>
-      <div class="unit-panel-body">
-        <div class="unit-panel-logo" id="partnerPanelLogo"></div>
-        <hr class="partner-panel-divider">
-        <h3 id="partnerPanelTitle"></h3>
-        <p class="unit-panel-summary" id="partnerPanelSummary"></p>
-        <p class="unit-panel-details" id="partnerPanelDetails"></p>
-        <a class="unit-panel-visit" id="partnerPanelVisit" target="_blank">
-          Visit →
-        </a>
-      </div>
-    </aside>
-
-    <!-- ===================== SECTION DIVIDER ===================== -->
-    <div class="section-divider" aria-hidden="true">
-      <span class="divider-line"></span>
-      <span class="divider-dot"></span>
-      <span class="divider-line"></span>
-    </div>
 
     <!-- ===================== TEAM ===================== -->
     <section class="team" id="team">
@@ -3789,7 +3302,7 @@
           <h2>Our team</h2>
         </div>
         <div class="team-grid">
-          <div class="team-card">
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/chair.jpg" alt="Branch Chair"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3814,7 +3327,7 @@
             </div>
           </div>
 
-          <div class="team-card">
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/vice-chair.jpg" alt="Vice Chair"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3839,7 +3352,7 @@
             </div>
           </div>
 
-          <div class="team-card">
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/secretary.jpg" alt="Secretary"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3864,7 +3377,7 @@
             </div>
           </div>
 
-          <div class="team-card">
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/treasurer.jpg" alt="Treasurer"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3889,7 +3402,7 @@
             </div>
           </div>
 
-          <div class="team-card">
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/media-lead.jpg" alt="Media & Design Lead"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3914,7 +3427,7 @@
             </div>
           </div>
 
-          <div class="team-card">
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/cs-lead.jpg" alt="CS Chapter Lead"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3939,7 +3452,7 @@
             </div>
           </div>
 
-          <div class="team-card">
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/wie-lead.jpg" alt="WIE Lead"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3964,7 +3477,7 @@
             </div>
           </div>
 
-          <div class="team-card">
+<div class="team-card">
             <div class="team-photo">
               <img src="assets/team/events-lead.jpg" alt="Events Coordinator"
                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3992,45 +3505,31 @@
       </div>
     </section>
 
-    <!-- ===================== SECTION DIVIDER ===================== -->
-    <div class="section-divider" aria-hidden="true">
-      <span class="divider-line"></span>
-      <span class="divider-dot"></span>
-      <span class="divider-line"></span>
-    </div>
     <!-- ===================== GALLERY ===================== -->
     <section class="gallery" id="gallery">
       <div class="container">
         <div class="section-head reveal">
           <span class="eyebrow">Moments from the branch</span>
           <h2>Gallery</h2>
-          <p>Highlights from our workshops, socials, and events. <!-- EDIT: update description --></p>
+          <p class="gallery-tagline">Making memories since 2024</p>
+          <p>Highlights from our workshops, socials, and events.</p>
         </div>
-
-        <div class="gallery-slider">
-          <button class="gallery-arrow prev" id="galleryPrev" aria-label="Previous photos" hidden>&#8249;</button>
-          <div class="gallery-grid">
-            <div class="gallery-item reveal">
-              <img src="gallery/IMG_4071.JPG" alt="test1"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <div class="gallery-fallback" style="display:none;">Photo</div>
-              <div class="gallery-overlay">
-                <span class="gallery-caption">test1</span>
-              </div>
-            </div>
-          </div>
-          <button class="gallery-arrow next" id="galleryNext" aria-label="Next photos" hidden>&#8250;</button>
-        </div>
+      </div>
+      <!-- Two auto-scrolling photo rows (second one runs the opposite way).
+           Slides are built from the list in the JS below; drop more files into
+           /gallery and add them there to extend it. Click a photo to open it. -->
+      <div class="gallery-marquee" role="region" aria-label="Photo gallery">
+        <div class="gallery-track" id="galleryTrack"></div>
+      </div>
+      <div class="gallery-marquee" aria-hidden="true">
+        <div class="gallery-track gallery-track--reverse" id="galleryTrackReverse"></div>
       </div>
     </section>
 
-    <!-- lightbox -->
-    <div class="lightbox" id="lightbox">
-      <button class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
-      <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous">&#8249;</button>
-      <img class="lightbox-img" id="lightboxImg" src="" alt="">
-      <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next">&#8250;</button>
-      <div class="lightbox-caption" id="lightboxCaption"></div>
+    <!-- gallery lightbox -->
+    <div class="glightbox" id="glightbox" aria-hidden="true">
+      <button class="glightbox-close" id="glightboxClose" type="button" aria-label="Close">&times;</button>
+      <img class="glightbox-img" id="glightboxImg" src="" alt="">
     </div>
 
     <!-- ===================== JOIN / CONTACT ===================== -->
@@ -4149,16 +3648,6 @@
         button.dataset.nextTheme = normalizedTheme === 'dark' ? 'light' : 'dark';
       });
     }
-
-    // ── scroll progress bar ──────────────────────────────
-    const progressBar = document.getElementById('scrollProgress');
-    function updateProgress() {
-      if (!progressBar) return;
-      const docH = document.documentElement.scrollHeight - window.innerHeight;
-      progressBar.style.width = (docH > 0 ? Math.min(window.scrollY / docH, 1) : 0) * 100 + '%';
-    }
-    window.addEventListener('scroll', updateProgress, { passive: true });
-    updateProgress();
 
     // ---------- nav scroll state ----------
     const nav = document.getElementById('mainNav');
@@ -4376,132 +3865,7 @@
       });
     })();
 
-    (function () {
 
-      const cards = document.querySelectorAll('.partner-card');
-
-      const overlay = document.getElementById('partnerOverlay');
-      const panel = document.getElementById('partnerPanel');
-
-      const top = document.getElementById('partnerPanelTop');
-      const logo = document.getElementById('partnerPanelLogo');
-      const tag = document.getElementById('partnerPanelTag');
-      const title = document.getElementById('partnerPanelTitle');
-      const summary = document.getElementById('partnerPanelSummary');
-      const details = document.getElementById('partnerPanelDetails');
-      const visit = document.getElementById('partnerPanelVisit');
-
-      const closeBtn = document.getElementById('partnerPanelClose');
-
-      function openPanel(card) {
-
-        const logoElement = card.querySelector('.partner-logo img');
-
-        // Reset popup logo
-        logo.innerHTML = "";
-
-        // Remove any previous partner class
-        logo.classList.remove(
-          "tarantinoo-card",
-          "watc-card",
-          "ithouse-card",
-          "funtopia-card",
-          "castello-card"
-        );
-
-        // Copy the clicked partner class
-        [
-          "tarantinoo-card",
-          "watc-card",
-          "ithouse-card",
-          "funtopia-card",
-          "castello-card"
-        ].forEach(cls => {
-          if (card.classList.contains(cls)) {
-            logo.classList.add(cls);
-          }
-        });
-
-        // Clone the logo image
-        if (logoElement) {
-          logo.appendChild(logoElement.cloneNode(true));
-        }
-
-        const heading = card.querySelector('h3');
-        const summaryText = card.querySelector('p');
-
-        top.style.background = "var(--ieee-blue)";
-
-        title.textContent = heading ? heading.textContent : "";
-        summary.textContent = summaryText ? summaryText.textContent : "";
-        details.textContent = card.dataset.details || "";
-
-        visit.href = card.dataset.website || "#";
-        visit.style.display = card.dataset.website ? "inline-flex" : "none";
-
-        overlay.classList.add("active");
-        panel.classList.add("active");
-        document.body.style.overflow = "hidden";
-      }
-      function closePanel() {
-
-        overlay.classList.remove("active");
-        panel.classList.remove("active");
-        document.body.style.overflow = "";
-      }
-
-      cards.forEach(card => {
-        card.addEventListener("click", () => openPanel(card));
-      });
-
-      closeBtn.addEventListener("click", closePanel);
-      overlay.addEventListener("click", closePanel);
-
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closePanel();
-      });
-
-    })();
-    (function () {
-      if (window.matchMedia('(hover: none), (pointer: coarse)').matches) return;
-
-      const dot = document.getElementById('cursorDot');
-      const ring = document.getElementById('cursorRing');
-      const body = document.body;
-
-      let mouseX = 0, mouseY = 0;
-      let ringX = 0, ringY = 0;
-
-      document.addEventListener('mousemove', e => {
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-        dot.style.left = mouseX + 'px';
-        dot.style.top = mouseY + 'px';
-        body.classList.remove('cursor-hidden');
-      });
-
-      document.addEventListener('mouseleave', () => body.classList.add('cursor-hidden'));
-      document.addEventListener('mouseenter', () => body.classList.remove('cursor-hidden'));
-
-      // eased trailing ring
-      function animateRing() {
-        ringX += (mouseX - ringX) * 0.18;
-        ringY += (mouseY - ringY) * 0.18;
-        ring.style.left = ringX + 'px';
-        ring.style.top = ringY + 'px';
-        requestAnimationFrame(animateRing);
-      }
-      animateRing();
-
-      document.addEventListener('mousedown', () => body.classList.add('cursor-active'));
-      document.addEventListener('mouseup', () => body.classList.remove('cursor-active'));
-
-      const interactiveSelector = 'a, button, .unit-card, .team-card, input, textarea, select, [onclick]';
-      document.querySelectorAll(interactiveSelector).forEach(el => {
-        el.addEventListener('mouseenter', () => body.classList.add('cursor-hover'));
-        el.addEventListener('mouseleave', () => body.classList.remove('cursor-hover'));
-      });
-    })();
 
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -4571,101 +3935,111 @@
     });
 
 
+    // ---------- gallery marquee (two auto-scrolling rows + click-to-open) ----------
     (function () {
-      const items = Array.from(document.querySelectorAll('.gallery-item'));
-      if (!items.length) return;
+      const track = document.getElementById('galleryTrack');
+      const trackReverse = document.getElementById('galleryTrackReverse');
+      if (!track) return;
 
-      const lightbox = document.getElementById('lightbox');
-      const lightboxImg = document.getElementById('lightboxImg');
-      const lightboxCaption = document.getElementById('lightboxCaption');
-      const closeBtn = document.getElementById('lightboxClose');
-      const prevBtn = document.getElementById('lightboxPrev');
-      const nextBtn = document.getElementById('lightboxNext');
+      // Photos live in /gallery. Add filenames here to include more shots;
+      // { src, alt } — alt doubles as the accessible label.
+      const photos = [
+        { src: 'gallery/IMG_4071.JPG', alt: 'IEEE FSM Student Branch memory' },
+        { src: 'gallery/1782504877588.jpg', alt: '1' },
+        { src: 'gallery/IMG_2543.JPG', alt: '2' },
+        { src: 'gallery/placeholder.jpg', alt: '3' },
+        { src: 'gallery/placeholder.jpg', alt: '4' },
+        { src: 'gallery/IMG_9892.JPG', alt: '5' },
+        { src: 'gallery/WhatsApp_Image_2026-07-08_at_4.18.08_PM_-_Mohamed_Ali.jpeg', alt: '7' },
+        { src: 'gallery/WhatsApp_Image_2026-07-08_at_4.18.09_PM_-_Mohamed_Ali.jpeg', alt: '8' },
+      ];
 
-      let currentIndex = 0;
+      // Need enough slides to fill the row wide enough that a -50% loop is
+      // seamless. Repeat the source list until we have a comfortable minimum,
+      // then duplicate the whole set once (the second half is what scrolls in).
+      const MIN_SLIDES = 6;
+      let base = [];
+      while (base.length < MIN_SLIDES) base = base.concat(photos);
 
-      function openLightbox(index) {
-        currentIndex = index;
-        const item = items[currentIndex];
-        const img = item.querySelector('img');
-        const caption = item.querySelector('.gallery-caption');
+      // lightbox
+      const lightbox = document.getElementById('glightbox');
+      const lightboxImg = document.getElementById('glightboxImg');
+      const lightboxClose = document.getElementById('glightboxClose');
 
-        lightboxImg.src = img.src;
-        lightboxImg.alt = img.alt;
-        lightboxCaption.textContent = caption ? caption.textContent : '';
-
+      function openLightbox(src, alt) {
+        if (!lightbox) return;
+        lightboxImg.src = src;
+        lightboxImg.alt = alt || '';
         lightbox.classList.add('active');
+        lightbox.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
       }
 
       function closeLightbox() {
+        if (!lightbox) return;
         lightbox.classList.remove('active');
+        lightbox.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
       }
 
-      function showNext() {
-        currentIndex = (currentIndex + 1) % items.length;
-        openLightbox(currentIndex);
+      if (lightbox) {
+        lightboxClose.addEventListener('click', closeLightbox);
+        lightbox.addEventListener('click', (e) => {
+          if (e.target === lightbox) closeLightbox();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && lightbox.classList.contains('active')) closeLightbox();
+        });
       }
 
-      function showPrev() {
-        currentIndex = (currentIndex - 1 + items.length) % items.length;
-        openLightbox(currentIndex);
+      function makeSlide(photo) {
+        const slide = document.createElement('div');
+        slide.className = 'gallery-slide';
+        slide.setAttribute('role', 'button');
+        slide.setAttribute('tabindex', '0');
+        slide.setAttribute('aria-label', 'Open photo: ' + photo.alt);
+        const img = document.createElement('img');
+        img.src = photo.src;
+        img.alt = photo.alt;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        const fallback = document.createElement('div');
+        fallback.className = 'gallery-fallback';
+        fallback.style.display = 'none';
+        fallback.textContent = 'Photo';
+        img.addEventListener('error', () => {
+          img.style.display = 'none';
+          fallback.style.display = 'flex';
+        });
+        // click / keyboard opens the photo in the lightbox
+        slide.addEventListener('click', () => openLightbox(photo.src, photo.alt));
+        slide.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openLightbox(photo.src, photo.alt);
+          }
+        });
+        slide.appendChild(img);
+        slide.appendChild(fallback);
+        return slide;
       }
 
-      items.forEach((item, index) => {
-        item.addEventListener('click', () => openLightbox(index));
-      });
-
-      closeBtn.addEventListener('click', closeLightbox);
-      nextBtn.addEventListener('click', showNext);
-      prevBtn.addEventListener('click', showPrev);
-
-      lightbox.addEventListener('click', (e) => {
-        if (e.target === lightbox) closeLightbox();
-      });
-
-      document.addEventListener('keydown', (e) => {
-        if (!lightbox.classList.contains('active')) return;
-        if (e.key === 'Escape') closeLightbox();
-        if (e.key === 'ArrowRight') showNext();
-        if (e.key === 'ArrowLeft') showPrev();
-      });
-    })();
-
-
-    // ---------- gallery slider (horizontal scroll + arrows) ----------
-    (function () {
-      const track = document.querySelector('.gallery-grid');
-      const prev = document.getElementById('galleryPrev');
-      const next = document.getElementById('galleryNext');
-      if (!track || !prev || !next) return;
-
-      // Scroll roughly one viewport of tiles at a time.
-      function pageWidth() {
-        const first = track.querySelector('.gallery-item');
-        const step = first ? first.getBoundingClientRect().width + 16 : track.clientWidth;
-        return Math.max(step, track.clientWidth - step);
+      // Fill a track with two identical halves so the @keyframes -50% translate
+      // loops seamlessly. Mark the duplicated half aria-hidden.
+      function fillTrack(el, list) {
+        if (!el) return;
+        const frag = document.createDocumentFragment();
+        list.concat(list).forEach(photo => frag.appendChild(makeSlide(photo)));
+        el.appendChild(frag);
+        const total = el.children.length;
+        for (let i = total / 2; i < total; i++) {
+          el.children[i].setAttribute('aria-hidden', 'true');
+        }
       }
 
-      function updateArrows() {
-        const overflow = track.scrollWidth - track.clientWidth > 4;
-        const atStart = track.scrollLeft <= 4;
-        const atEnd = track.scrollLeft >= track.scrollWidth - track.clientWidth - 4;
-        prev.hidden = !overflow || atStart;
-        next.hidden = !overflow || atEnd;
-      }
-
-      prev.addEventListener('click', () => track.scrollBy({ left: -pageWidth(), behavior: 'smooth' }));
-      next.addEventListener('click', () => track.scrollBy({ left: pageWidth(), behavior: 'smooth' }));
-      track.addEventListener('scroll', updateArrows, { passive: true });
-      window.addEventListener('resize', updateArrows);
-
-      // Re-check once images have loaded (their size affects scrollWidth).
-      track.querySelectorAll('img').forEach(img => {
-        if (!img.complete) img.addEventListener('load', updateArrows, { once: true });
-      });
-      updateArrows();
+      fillTrack(track, base);
+      // second row shows the same photos in reverse order so the two rows differ
+      fillTrack(trackReverse, base.slice().reverse());
     })();
 
 

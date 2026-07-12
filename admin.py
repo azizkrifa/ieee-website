@@ -146,6 +146,12 @@ def esc(s):
     return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
+def js_str(s):
+    """Escape a Python string for embedding inside a single-quoted JS string
+    literal (used to rewrite the gallery `photos` array)."""
+    return (s or "").replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", "")
+
+
 def sniff_web_image(header):
     """Return a short format name ('jpeg', 'png', ...) if `header` (the first
     bytes of a file) is a raster/vector image a browser can actually render,
@@ -217,7 +223,7 @@ def validate_html(html, context=""):
             )
     for required in ('<div class="timeline">', '<div class="units-grid">',
                       '<div class="team-grid">', '<div class="partners-grid">',
-                      '<div class="gallery-grid">', "</html>"):
+                      'const photos = [', "</html>"):
         if required not in html:
             raise ValidationError(
                 f"Refused to save{(' — ' + context) if context else ''}: "
@@ -327,12 +333,14 @@ def parse_partners(html):
         return []
     inner = html[span[0]:span[1]]
     items = []
-    for start, end in top_level_blocks(inner, "partner-card", tag="article"):
+    # Partners are now logo-only <a class="partner-tile"> links (no card/name/details).
+    # The partner name lives in the title/aria-label attribute; the site is the href.
+    for start, end in top_level_blocks(inner, "partner-tile", tag="a"):
         block = inner[start:end]
+        name = text_of(r'\btitle="(.*?)"', block) or text_of(r'\baria-label="(.*?)"', block)
         items.append({
-            "name": text_of(r'<h3>(.*?)</h3>', block),
-            "website": text_of(r'data-website="(.*?)"', block),
-            "details": text_of(r'data-details="(.*?)"', block),
+            "name": name,
+            "website": text_of(r'\bhref="(.*?)"', block),
             "logo": img_src_of(block, "placeholder-logo.svg"),
             "fallback": text_of(r'<span class="partner-fallback">(.*?)</span>', block),
             "raw_html": block,
@@ -340,19 +348,43 @@ def parse_partners(html):
     return items
 
 
+GALLERY_PHOTOS_RE = re.compile(r'(const photos = \[)(.*?)(\];)', re.S)
+
+
+def find_gallery_photos_span(html):
+    """Return the regex match for the gallery marquee's `const photos = [ ... ];`
+    array, or None. The gallery is now JS-driven (an auto-scrolling marquee
+    built from this array), not a static HTML container."""
+    return GALLERY_PHOTOS_RE.search(html)
+
+
+def _js_unstr(m):
+    """Undo js_str escaping for a value captured from a JS string literal."""
+    return m.replace("\\'", "'").replace('\\"', '"').replace("\\\\", "\\")
+
+
 def parse_gallery(html):
-    span = find_container_span(html, "gallery-grid")
-    if not span:
+    m = find_gallery_photos_span(html)
+    if not m:
         return []
-    inner = html[span[0]:span[1]]
+    body = m.group(2)
     items = []
-    for start, end in top_level_blocks(inner, "gallery-item"):
-        block = inner[start:end]
+    # each entry looks like: { src: 'gallery/x.jpg', alt: 'caption' }
+    for entry in re.finditer(r'\{[^}]*\}', body):
+        block = entry.group(0)
+        # capture single- or double-quoted values, honoring backslash-escaped quotes
+        src_m = re.search(r'src:\s*(?:\'((?:\\.|[^\'\\])*)\'|"((?:\\.|[^"\\])*)")', block)
+        alt_m = re.search(r'alt:\s*(?:\'((?:\\.|[^\'\\])*)\'|"((?:\\.|[^"\\])*)")', block)
+        if not src_m:
+            continue
+        src = _js_unstr(src_m.group(1) if src_m.group(1) is not None else src_m.group(2))
+        alt = ""
+        if alt_m:
+            alt = _js_unstr(alt_m.group(1) if alt_m.group(1) is not None else alt_m.group(2))
         items.append({
-            "photo": img_src_of(block, f"{GALLERY_IMG_DIR}/placeholder.jpg"),
-            "title": text_of(r'<span class="gallery-caption">(.*?)</span>', block),
-            "alt": text_of(r'<img\b[^>]*\balt="(.*?)"', block),
-            "raw_html": block,
+            "photo": src,
+            "title": alt,
+            "alt": alt,
         })
     return items
 
@@ -449,15 +481,13 @@ def build_team_block(t):
 
 
 def build_partner_block(p):
-    return f'''          <article class="partner-card reveal" data-website="{esc(p.get("website", ""))}"
-            data-details="{esc(p.get("details", ""))}">
-            <div class="partner-logo">
-              <img src="{esc(p.get("logo", "placeholder-logo.svg"))}" alt="{esc(p.get("name", ""))} Partner Logo"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <span class="partner-fallback">{esc(p.get("fallback", ""))}</span>
-            </div>
-            <h3>{esc(p.get("name", ""))}</h3>
-          </article>'''
+    name = p.get("name", "")
+    return f'''          <a class="partner-tile reveal" href="{esc(p.get("website", ""))}" target="_blank" rel="noopener"
+            title="{esc(name)}" aria-label="{esc(name)}">
+            <img src="{esc(p.get("logo", "placeholder-logo.svg"))}" alt="{esc(name)} logo"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="partner-fallback">{esc(p.get("fallback", "") or name)}</span>
+          </a>'''
 
 
 def team_output_html(t):
@@ -470,22 +500,26 @@ def partner_output_html(p):
     return raw if raw else build_partner_block(p)
 
 
-def build_gallery_block(g):
-    title = g.get("title", "")
-    alt = g.get("alt") or title
-    return f'''          <div class="gallery-item reveal">
-            <img src="{esc(g.get("photo", f"{GALLERY_IMG_DIR}/placeholder.jpg"))}" alt="{esc(alt)}"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="gallery-fallback" style="display:none;">Photo</div>
-            <div class="gallery-overlay">
-              <span class="gallery-caption">{esc(title)}</span>
-            </div>
-          </div>'''
+def build_gallery_entry(g):
+    """One line of the JS `photos` array. `alt` doubles as the caption/label."""
+    alt = g.get("alt") or g.get("title", "")
+    return f"        {{ src: '{js_str(g.get('photo', ''))}', alt: '{js_str(alt)}' }},"
 
 
-def gallery_output_html(g):
-    raw = g.get("raw_html")
-    return raw if raw else build_gallery_block(g)
+def replace_gallery_photos(html, gallery):
+    """Rewrite the gallery marquee's `const photos = [ ... ];` array from state.
+    The gallery is JS-driven now, so there is no HTML container to replace."""
+    m = find_gallery_photos_span(html)
+    if not m:
+        raise ValidationError(
+            "Could not find the gallery `const photos = [ ... ];` array — nothing was changed."
+        )
+    if gallery:
+        lines = "\n".join(build_gallery_entry(g) for g in gallery)
+        new_body = "\n" + lines + "\n      "
+    else:
+        new_body = "\n      "
+    return html[:m.start()] + m.group(1) + new_body + m.group(3) + html[m.end():]
 
 
 def replace_container(html, class_name, new_inner_html):
@@ -587,13 +621,12 @@ def api_save():
         units_html = "\n\n".join(unit_output_html(u) for u in data.get("units", []))
         team_html = "\n\n".join(team_output_html(t) for t in data.get("team", []))
         partners_html = "\n\n".join(partner_output_html(p) for p in data.get("partners", []))
-        gallery_html = "\n\n".join(gallery_output_html(g) for g in data.get("gallery", []))
 
         new_html = replace_container(html, "timeline", activities_html)
         new_html = replace_container(new_html, "units-grid", units_html)
         new_html = replace_container(new_html, "team-grid", team_html)
         new_html = replace_container(new_html, "partners-grid", partners_html)
-        new_html = replace_container(new_html, "gallery-grid", gallery_html)
+        new_html = replace_gallery_photos(new_html, data.get("gallery", []))
         new_html = replace_stats(new_html, data.get("stats", []))
 
         write_index_html_safely(new_html, context="structured save")
@@ -1084,10 +1117,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <h3>Add partner</h3>
           <label>Name</label><input type="text" id="pName">
           <label>Website/Instagram link</label><input type="url" id="pWebsite">
-          <label>Details</label><textarea id="pDetails"></textarea>
           <label>Fallback text (shown if logo fails to load)</label><input type="text" id="pFallback">
           <label>Logo</label><input type="file" id="pFile" accept="image/*">
-          <div class="note">Uploads straight into your <code>Logos/</code> folder when you click Add.</div>
+          <div class="note">Logo-only tile: shown in grayscale, full colour on hover. Uploads straight into your <code>Logos/</code> folder when you click Add.</div>
           <div class="btnrow"><button class="btn btn-p" id="pAddBtn" onclick="addPartner()">Add partner</button>
           <button class="btn btn-g" id="pCancelBtn" style="display:none;" onclick="cancelPartnerEdit()">Cancel edit</button></div>
         </div>
@@ -1108,9 +1140,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       <div class="grid2">
         <div class="card">
           <h3>Add photo</h3>
-          <label>Title (caption)</label><input type="text" id="gTitle">
+          <label>Description (alt text / accessible label)</label><input type="text" id="gTitle">
           <label>Photo</label><input type="file" id="gFile" accept="image/*">
-          <div class="note">Uploads straight into your <code>gallery/</code> folder when you click Add.</div>
+          <div class="note">Photos scroll in an auto-playing marquee; click one on the site to open it. Uploads straight into your <code>gallery/</code> folder when you click Add.</div>
           <div class="btnrow"><button class="btn btn-p" id="gAddBtn" onclick="addGalleryPhoto()">Add photo</button>
           <button class="btn btn-g" id="gCancelBtn" style="display:none;" onclick="cancelGalleryEdit()">Cancel edit</button></div>
         </div>
@@ -1543,7 +1575,6 @@ async function addPartner(){
   const entry = {
     name,
     website: document.getElementById('pWebsite').value.trim(),
-    details: document.getElementById('pDetails').value.trim(),
     fallback: document.getElementById('pFallback').value.trim() || name,
     logo: filename
   };
@@ -1561,7 +1592,6 @@ function editPartner(i){
   const p = state.partners[i];
   document.getElementById('pName').value = p.name;
   document.getElementById('pWebsite').value = p.website;
-  document.getElementById('pDetails').value = p.details;
   document.getElementById('pFallback').value = p.fallback;
   document.getElementById('pFile').value = '';
   editingPartner = i;
@@ -1570,7 +1600,7 @@ function editPartner(i){
 }
 function cancelPartnerEdit(){
   editingPartner = null;
-  ['pName','pWebsite','pDetails','pFallback'].forEach(id=>document.getElementById(id).value='');
+  ['pName','pWebsite','pFallback'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('pFile').value = '';
   document.getElementById('pAddBtn').textContent = 'Add partner';
   document.getElementById('pCancelBtn').style.display = 'none';
