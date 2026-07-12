@@ -1699,7 +1699,8 @@
       cursor: pointer;
     }
 
-    .gallery-slide img {
+    .gallery-slide img,
+    .gallery-slide video {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -1707,7 +1708,8 @@
       transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .gallery-slide:hover img {
+    .gallery-slide:hover img,
+    .gallery-slide:hover video {
       transform: scale(1.06);
     }
 
@@ -1767,8 +1769,19 @@
       transition: transform 0.3s ease;
     }
 
-    .glightbox.active .glightbox-img {
+    .glightbox.active .glightbox-img,
+    .glightbox.active .glightbox-video {
       transform: scale(1);
+    }
+
+    .glightbox-video {
+      max-width: min(90vw, 1100px);
+      max-height: 85vh;
+      border-radius: 10px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      transform: scale(0.96);
+      transition: transform 0.3s ease;
+      outline: none;
     }
 
     .glightbox-close {
@@ -2845,7 +2858,7 @@
             <span class="partner-fallback">ZEF</span>
           </a>
 
-          <a class="partner-tile reveal" href="sdff" target="_blank" rel="noopener"
+<a class="partner-tile reveal" href="sdff" target="_blank" rel="noopener"
             title="dsfs" aria-label="dsfs">
             <img src="Logos/Layer_7.png" alt="dsfs logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -3530,6 +3543,7 @@
     <div class="glightbox" id="glightbox" aria-hidden="true">
       <button class="glightbox-close" id="glightboxClose" type="button" aria-label="Close">&times;</button>
       <img class="glightbox-img" id="glightboxImg" src="" alt="">
+      <video class="glightbox-video" id="glightboxVideo" controls playsinline style="display:none;"></video>
     </div>
 
     <!-- ===================== JOIN / CONTACT ===================== -->
@@ -3952,6 +3966,7 @@
         { src: 'gallery/IMG_9892.JPG', alt: '5' },
         { src: 'gallery/WhatsApp_Image_2026-07-08_at_4.18.08_PM_-_Mohamed_Ali.jpeg', alt: '7' },
         { src: 'gallery/WhatsApp_Image_2026-07-08_at_4.18.09_PM_-_Mohamed_Ali.jpeg', alt: '8' },
+        { src: 'gallery/DA777D8D-4BC4-4CCE-BE16-AB2E25436C77_-_yosr.mp4', alt: 'dsdf', type: 'video' },
       ];
 
       // Need enough slides to fill the row wide enough that a -50% loop is
@@ -3964,12 +3979,24 @@
       // lightbox
       const lightbox = document.getElementById('glightbox');
       const lightboxImg = document.getElementById('glightboxImg');
+      const lightboxVideo = document.getElementById('glightboxVideo');
       const lightboxClose = document.getElementById('glightboxClose');
 
-      function openLightbox(src, alt) {
+      function openLightbox(src, alt, isVideo) {
         if (!lightbox) return;
-        lightboxImg.src = src;
-        lightboxImg.alt = alt || '';
+        if (isVideo) {
+          lightboxImg.style.display = 'none';
+          lightboxVideo.style.display = '';
+          lightboxVideo.src = src;
+          lightboxVideo.play();
+        } else {
+          lightboxVideo.style.display = 'none';
+          lightboxVideo.pause();
+          lightboxVideo.src = '';
+          lightboxImg.style.display = '';
+          lightboxImg.src = src;
+          lightboxImg.alt = alt || '';
+        }
         lightbox.classList.add('active');
         lightbox.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
@@ -3980,6 +4007,10 @@
         lightbox.classList.remove('active');
         lightbox.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+        if (lightboxVideo) {
+          lightboxVideo.pause();
+          lightboxVideo.src = '';
+        }
       }
 
       if (lightbox) {
@@ -3997,29 +4028,43 @@
         slide.className = 'gallery-slide';
         slide.setAttribute('role', 'button');
         slide.setAttribute('tabindex', '0');
-        slide.setAttribute('aria-label', 'Open photo: ' + photo.alt);
-        const img = document.createElement('img');
-        img.src = photo.src;
-        img.alt = photo.alt;
-        img.loading = 'lazy';
-        img.decoding = 'async';
+        const isVideo = photo.type === 'video';
+        slide.setAttribute('aria-label', (isVideo ? 'Open video: ' : 'Open photo: ') + photo.alt);
+
+        let media;
+        if (isVideo) {
+          media = document.createElement('video');
+          media.src = photo.src;
+          media.muted = true;
+          media.loop = true;
+          media.autoplay = true;
+          media.playsInline = true;
+          media.setAttribute('playsinline', '');
+          media.preload = 'metadata';
+        } else {
+          media = document.createElement('img');
+          media.src = photo.src;
+          media.alt = photo.alt;
+          media.loading = 'lazy';
+          media.decoding = 'async';
+        }
+
         const fallback = document.createElement('div');
         fallback.className = 'gallery-fallback';
         fallback.style.display = 'none';
-        fallback.textContent = 'Photo';
-        img.addEventListener('error', () => {
-          img.style.display = 'none';
+        fallback.textContent = isVideo ? 'Video' : 'Photo';
+        media.addEventListener('error', () => {
+          media.style.display = 'none';
           fallback.style.display = 'flex';
         });
-        // click / keyboard opens the photo in the lightbox
-        slide.addEventListener('click', () => openLightbox(photo.src, photo.alt));
+        slide.addEventListener('click', () => openLightbox(photo.src, photo.alt, isVideo));
         slide.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            openLightbox(photo.src, photo.alt);
+            openLightbox(photo.src, photo.alt, isVideo);
           }
         });
-        slide.appendChild(img);
+        slide.appendChild(media);
         slide.appendChild(fallback);
         return slide;
       }

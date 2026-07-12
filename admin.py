@@ -176,6 +176,21 @@ def sniff_web_image(header):
     return None
 
 
+def sniff_web_media(header):
+    """Return (format, kind) where kind is 'image' or 'video', or (None, None)
+    if the file is not a browser-renderable media type."""
+    img = sniff_web_image(header)
+    if img:
+        return (img, 'image')
+    # MP4 — ISO-BMFF ftyp box (not AVIF, already handled above)
+    if header[4:8] == b'ftyp':
+        return ('mp4', 'video')
+    # WebM — starts with EBML header magic bytes
+    if header[:4] == b'\x1a\x45\xdf\xa3':
+        return ('webm', 'video')
+    return (None, None)
+
+
 def img_src_of(block, default=""):
     """Find the src of the first <img> tag in `block`, regardless of what
     other attributes (id, alt, class, onerror...) come before or after it —
@@ -369,23 +384,30 @@ def parse_gallery(html):
         return []
     body = m.group(2)
     items = []
-    # each entry looks like: { src: 'gallery/x.jpg', alt: 'caption' }
+    # each entry looks like: { src: 'gallery/x.jpg', alt: 'caption', type: 'video' }
     for entry in re.finditer(r'\{[^}]*\}', body):
         block = entry.group(0)
         # capture single- or double-quoted values, honoring backslash-escaped quotes
         src_m = re.search(r'src:\s*(?:\'((?:\\.|[^\'\\])*)\'|"((?:\\.|[^"\\])*)")', block)
         alt_m = re.search(r'alt:\s*(?:\'((?:\\.|[^\'\\])*)\'|"((?:\\.|[^"\\])*)")', block)
+        type_m = re.search(r'type:\s*(?:\'((?:\\.|[^\'\\])*)\'|"((?:\\.|[^"\\])*)")', block)
         if not src_m:
             continue
         src = _js_unstr(src_m.group(1) if src_m.group(1) is not None else src_m.group(2))
         alt = ""
         if alt_m:
             alt = _js_unstr(alt_m.group(1) if alt_m.group(1) is not None else alt_m.group(2))
-        items.append({
+        media_type = ""
+        if type_m:
+            media_type = _js_unstr(type_m.group(1) if type_m.group(1) is not None else type_m.group(2))
+        item = {
             "photo": src,
             "title": alt,
             "alt": alt,
-        })
+        }
+        if media_type:
+            item["type"] = media_type
+        items.append(item)
     return items
 
 
@@ -503,7 +525,10 @@ def partner_output_html(p):
 def build_gallery_entry(g):
     """One line of the JS `photos` array. `alt` doubles as the caption/label."""
     alt = g.get("alt") or g.get("title", "")
-    return f"        {{ src: '{js_str(g.get('photo', ''))}', alt: '{js_str(alt)}' }},"
+    type_part = ""
+    if g.get("type") == "video":
+        type_part = ", type: 'video'"
+    return f"        {{ src: '{js_str(g.get('photo', ''))}', alt: '{js_str(alt)}'{type_part} }},"
 
 
 def replace_gallery_photos(html, gallery):
@@ -597,18 +622,22 @@ def api_upload():
     # error in the panel instead of a broken tile that only shows a fallback.
     header = file.stream.read(64)
     file.stream.seek(0)
-    kind = sniff_web_image(header)
-    if not kind:
+    fmt, kind = sniff_web_media(header)
+    if not fmt:
         return jsonify({"ok": False, "error": (
-            "That file isn't a web-viewable image. Browsers can only display "
-            "JPEG, PNG, GIF, WebP, AVIF, or SVG — this looks like a RAW/DNG, "
-            "HEIC, or TIFF file (common straight off an iPhone or camera). "
-            "Export or save it as a JPEG or PNG first, then upload that."
+            "That file isn't a web-viewable image or video. Browsers can display "
+            "JPEG, PNG, GIF, WebP, AVIF, SVG images and MP4/WebM videos — this "
+            "looks like an unsupported format. Export or convert it first."
+        )}), 400
+    # Only allow video uploads to the gallery directory
+    if kind == 'video' and target_dir != GALLERY_IMG_DIR:
+        return jsonify({"ok": False, "error": (
+            "Videos can only be uploaded to the gallery."
         )}), 400
     os.makedirs(target_dir, exist_ok=True)
     save_path = os.path.join(target_dir, filename)
     file.save(save_path)
-    return jsonify({"ok": True, "filename": filename, "path": save_path})
+    return jsonify({"ok": True, "filename": filename, "path": save_path, "kind": kind})
 
 
 @app.route("/api/save", methods=["POST"])
@@ -1136,18 +1165,18 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
     <section class="panel" id="p-gallery">
       <h2>Gallery</h2>
-      <p class="sub">Loaded directly from your index.html. Add, edit, or reorder gallery photos, then save at the bottom.</p>
+      <p class="sub">Loaded directly from your index.html. Add, edit, or reorder gallery photos and videos, then save at the bottom.</p>
       <div class="grid2">
         <div class="card">
-          <h3>Add photo</h3>
+          <h3>Add photo / video</h3>
           <label>Description (alt text / accessible label)</label><input type="text" id="gTitle">
-          <label>Photo</label><input type="file" id="gFile" accept="image/*">
-          <div class="note">Photos scroll in an auto-playing marquee; click one on the site to open it. Uploads straight into your <code>gallery/</code> folder when you click Add.</div>
-          <div class="btnrow"><button class="btn btn-p" id="gAddBtn" onclick="addGalleryPhoto()">Add photo</button>
+          <label>Photo / Video</label><input type="file" id="gFile" accept="image/*,video/mp4,video/webm">
+          <div class="note">Photos and videos scroll in an auto-playing marquee; click one on the site to open it. Videos auto-play muted in the marquee and open with controls in the lightbox. Uploads straight into your <code>gallery/</code> folder when you click Add.</div>
+          <div class="btnrow"><button class="btn btn-p" id="gAddBtn" onclick="addGalleryPhoto()">Add</button>
           <button class="btn btn-g" id="gCancelBtn" style="display:none;" onclick="cancelGalleryEdit()">Cancel edit</button></div>
         </div>
         <div class="card">
-          <h3>Current photos (<span id="gCount">0</span>)</h3>
+          <h3>Current items (<span id="gCount">0</span>)</h3>
           <div class="entry-scroll" id="gList"></div>
         </div>
       </div>
@@ -1308,7 +1337,7 @@ async function uploadFile(inputEl, dir){
   fd.append('dir', dir);
   const j = await safeFetch('/api/upload', {method:'POST', body: fd});
   if(!j.ok){ toast('Upload failed: '+j.error, true); return null; }
-  return j.filename;
+  return {filename: j.filename, kind: j.kind || 'image'};
 }
 
 /* ---- activities ---- */
@@ -1323,7 +1352,7 @@ async function addActivity(){
   let filename = editingActivity !== null ? state.activities[editingActivity].img : 'placeholder.jpg';
   if(fileInput.files && fileInput.files[0]){
     const uploaded = await uploadFile(fileInput, 'Act_Images');
-    if(uploaded) filename = uploaded;
+    if(uploaded) filename = uploaded.filename;
   }
   const entry = {
     title,
@@ -1402,7 +1431,7 @@ async function addUnit(){
   let filename = editingUnit !== null ? state.units[editingUnit].logo : 'placeholder-logo.svg';
   if(fileInput.files && fileInput.files[0]){
     const uploaded = await uploadFile(fileInput, 'Unit_Images');
-    if(uploaded) filename = uploaded;
+    if(uploaded) filename = uploaded.filename;
   }
   const entry = {
     name, tag: document.getElementById('uTag').value.trim(),
@@ -1488,7 +1517,7 @@ async function addTeamMember(){
   let filename = editingTeam !== null ? state.team[editingTeam].photo : 'assets/team/placeholder.jpg';
   if(fileInput.files && fileInput.files[0]){
     const uploaded = await uploadFile(fileInput, 'assets/team');
-    if(uploaded) filename = 'assets/team/' + uploaded;
+    if(uploaded) filename = 'assets/team/' + uploaded.filename;
   }
   const entry = {
     name, role,
@@ -1570,7 +1599,7 @@ async function addPartner(){
   let filename = editingPartner !== null ? state.partners[editingPartner].logo : 'Logos/placeholder-logo.svg';
   if(fileInput.files && fileInput.files[0]){
     const uploaded = await uploadFile(fileInput, 'Logos');
-    if(uploaded) filename = 'Logos/' + uploaded;
+    if(uploaded) filename = 'Logos/' + uploaded.filename;
   }
   const entry = {
     name,
@@ -1645,23 +1674,28 @@ async function addGalleryPhoto(){
   if(!title){ toast('Add a title first.'); return; }
   const fileInput = document.getElementById('gFile');
   let filename = editingGallery !== null ? state.gallery[editingGallery].photo : 'gallery/placeholder.jpg';
+  let mediaKind = editingGallery !== null ? (state.gallery[editingGallery].type || '') : '';
   if(fileInput.files && fileInput.files[0]){
     const uploaded = await uploadFile(fileInput, 'gallery');
-    if(uploaded) filename = 'gallery/' + uploaded;
+    if(uploaded){
+      filename = 'gallery/' + uploaded.filename;
+      mediaKind = uploaded.kind === 'video' ? 'video' : '';
+    }
   } else if(editingGallery === null){
-    toast('Pick a photo first.'); return;
+    toast('Pick a file first.'); return;
   }
   const entry = {
     title,
     alt: title,
     photo: filename
   };
+  if(mediaKind === 'video') entry.type = 'video';
   if(editingGallery !== null){
     state.gallery[editingGallery] = entry;
-    toast('Photo updated (remember to Save)');
+    toast('Item updated (remember to Save)');
   } else {
     state.gallery.push(entry);
-    toast('Photo added (remember to Save)');
+    toast('Item added (remember to Save)');
   }
   cancelGalleryEdit();
   renderGallery();
@@ -1678,7 +1712,7 @@ function cancelGalleryEdit(){
   editingGallery = null;
   document.getElementById('gTitle').value = '';
   document.getElementById('gFile').value = '';
-  document.getElementById('gAddBtn').textContent = 'Add photo';
+  document.getElementById('gAddBtn').textContent = 'Add';
   document.getElementById('gCancelBtn').style.display = 'none';
 }
 function delG(i){
@@ -1700,10 +1734,10 @@ function renderGallery(){
       ondrop="dropGallery(${i});">
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="cursor:grab; color:var(--muted);">&#9776;</span>
-        <div><b>${esc(g.title)}</b><span>${esc(g.photo)}</span></div>
+        <div><b>${esc(g.title)}</b>${g.type==='video' ? ' <span style="color:#60b8ee;font-size:11px;">(video)</span>' : ''}<span>${esc(g.photo)}</span></div>
       </div>
       <div class="acts"><button onclick="editGalleryPhoto(${i})" title="Edit">&#9998;</button><button onclick="delG(${i})" title="Delete">&times;</button></div></div>`).join('')
-    : '<div class="empty">No gallery photos.</div>';
+    : '<div class="empty">No gallery items.</div>';
 }
 function dropGallery(dropIdx){
   if(dragGalleryIndex === null || dragGalleryIndex === dropIdx) return;
