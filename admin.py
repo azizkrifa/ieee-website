@@ -348,18 +348,31 @@ def parse_partners(html):
         return []
     inner = html[span[0]:span[1]]
     items = []
-    # Partners are now logo-only <a class="partner-tile"> links (no card/name/details).
-    # The partner name lives in the title/aria-label attribute; the site is the href.
-    for start, end in top_level_blocks(inner, "partner-tile", tag="a"):
+    # Partners are logo-only <div class="partner-tile"> (or legacy <a>) tiles.
+    # The partner name lives in the title/aria-label/data-name attribute; the site is data-website or href.
+    for start, end in top_level_blocks(inner, "partner-tile", tag="div"):
         block = inner[start:end]
-        name = text_of(r'\btitle="(.*?)"', block) or text_of(r'\baria-label="(.*?)"', block)
+        name = text_of(r'\bdata-name="(.*?)"', block) or text_of(r'\btitle="(.*?)"', block) or text_of(r'\baria-label="(.*?)"', block)
         items.append({
             "name": name,
-            "website": text_of(r'\bhref="(.*?)"', block),
+            "website": text_of(r'\bdata-website="(.*?)"', block) or text_of(r'\bhref="(.*?)"', block),
+            "description": text_of(r'\bdata-description="(.*?)"', block) or "",
             "logo": img_src_of(block, "placeholder-logo.svg"),
             "fallback": text_of(r'<span class="partner-fallback">(.*?)</span>', block),
             "raw_html": block,
         })
+    # Also handle legacy <a> tags for backward compat during transition
+    if not items:
+        for start, end in top_level_blocks(inner, "partner-tile", tag="a"):
+            block = inner[start:end]
+            name = text_of(r'\btitle="(.*?)"', block) or text_of(r'\baria-label="(.*?)"', block)
+            items.append({
+                "name": name,
+                "website": text_of(r'\bhref="(.*?)"', block),
+                "logo": img_src_of(block, "placeholder-logo.svg"),
+                "fallback": text_of(r'<span class="partner-fallback">(.*?)</span>', block),
+                "raw_html": block,
+            })
     return items
 
 
@@ -504,12 +517,12 @@ def build_team_block(t):
 
 def build_partner_block(p):
     name = p.get("name", "")
-    return f'''          <a class="partner-tile reveal" href="{esc(p.get("website", ""))}" target="_blank" rel="noopener"
-            title="{esc(name)}" aria-label="{esc(name)}">
+    return f'''          <div class="partner-tile reveal" data-name="{esc(name)}" data-website="{esc(p.get("website", ""))}" data-description="{esc(p.get("description", ""))}"
+            title="{esc(name)}" aria-label="{esc(name)}" role="button" tabindex="0">
             <img src="{esc(p.get("logo", "placeholder-logo.svg"))}" alt="{esc(name)} logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">{esc(p.get("fallback", "") or name)}</span>
-          </a>'''
+          </div>'''
 
 
 def team_output_html(t):
@@ -1145,10 +1158,11 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <div class="card">
           <h3>Add partner</h3>
           <label>Name</label><input type="text" id="pName">
+          <label>Description (shown in side panel)</label><textarea id="pDescription" rows="3" style="width:100%;resize:vertical;"></textarea>
           <label>Website/Instagram link</label><input type="url" id="pWebsite">
           <label>Fallback text (shown if logo fails to load)</label><input type="text" id="pFallback">
           <label>Logo</label><input type="file" id="pFile" accept="image/*">
-          <div class="note">Logo-only tile: shown in grayscale, full colour on hover. Uploads straight into your <code>Logos/</code> folder when you click Add.</div>
+          <div class="note">Clicking a partner on the site opens a side panel with its logo, description, and a link to the website.</div>
           <div class="btnrow"><button class="btn btn-p" id="pAddBtn" onclick="addPartner()">Add partner</button>
           <button class="btn btn-g" id="pCancelBtn" style="display:none;" onclick="cancelPartnerEdit()">Cancel edit</button></div>
         </div>
@@ -1603,6 +1617,7 @@ async function addPartner(){
   }
   const entry = {
     name,
+    description: document.getElementById('pDescription').value.trim(),
     website: document.getElementById('pWebsite').value.trim(),
     fallback: document.getElementById('pFallback').value.trim() || name,
     logo: filename
@@ -1620,6 +1635,7 @@ async function addPartner(){
 function editPartner(i){
   const p = state.partners[i];
   document.getElementById('pName').value = p.name;
+  document.getElementById('pDescription').value = p.description || '';
   document.getElementById('pWebsite').value = p.website;
   document.getElementById('pFallback').value = p.fallback;
   document.getElementById('pFile').value = '';
@@ -1630,6 +1646,7 @@ function editPartner(i){
 function cancelPartnerEdit(){
   editingPartner = null;
   ['pName','pWebsite','pFallback'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pDescription').value = '';
   document.getElementById('pFile').value = '';
   document.getElementById('pAddBtn').textContent = 'Add partner';
   document.getElementById('pCancelBtn').style.display = 'none';

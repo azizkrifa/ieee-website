@@ -930,6 +930,7 @@
       width: 150px;
       height: 84px;
       padding: 6px;
+      cursor: pointer;
     }
 
     .partner-tile img {
@@ -2802,68 +2803,68 @@
         </div>
 
         <div class="partners-grid">
-<a class="partner-tile reveal" href="https://fsm.rnu.tn" target="_blank" rel="noopener"
-            title="Faculty of Sciences of Monastir" aria-label="Faculty of Sciences of Monastir">
+          <div class="partner-tile reveal" data-name="Faculty of Sciences of Monastir" data-website="https://fsm.rnu.tn" data-description="The Faculty of Sciences of Monastir (FSM) is the academic home of our student branch, providing resources, mentorship, and a platform for students to engage in technical and professional development activities."
+            title="Faculty of Sciences of Monastir" aria-label="Faculty of Sciences of Monastir" role="button" tabindex="0">
             <img src="Logos/fsm.png" alt="Faculty of Sciences of Monastir logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">FSM</span>
-          </a>
+          </div>
 
-<a class="partner-tile reveal" href="https://ieee.tn/" target="_blank" rel="noopener"
-            title="IEEE Tunisia Section" aria-label="IEEE Tunisia Section">
+<div class="partner-tile reveal" data-name="IEEE Tunisia Section" data-website="https://ieee.tn/" data-description=""
+            title="IEEE Tunisia Section" aria-label="IEEE Tunisia Section" role="button" tabindex="0">
             <img src="Logos/ieee-section.png" alt="IEEE Tunisia Section logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">IEEE</span>
-          </a>
+          </div>
 
-<a class="partner-tile reveal" href="https://www.instagram.com/tarantino.monastir/" target="_blank"
-            rel="noopener" title="Tarantinoo Cafe" aria-label="Tarantinoo Cafe">
+<div class="partner-tile reveal" data-name="Tarantinoo Cafe" data-website="https://www.instagram.com/tarantino.monastir/" data-description=""
+            title="Tarantinoo Cafe" aria-label="Tarantinoo Cafe" role="button" tabindex="0">
             <img src="Logos/tarantinoo.png" alt="Tarantinoo Cafe logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">Tarantinoo</span>
-          </a>
+          </div>
 
-<a class="partner-tile reveal" href="https://www.instagram.com/funtopia.game/" target="_blank" rel="noopener"
-            title="Funtopia" aria-label="Funtopia">
+<div class="partner-tile reveal" data-name="Funtopia" data-website="https://www.instagram.com/funtopia.game/" data-description=""
+            title="Funtopia" aria-label="Funtopia" role="button" tabindex="0">
             <img src="Logos/funtopia.png" alt="Funtopia logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">Funtopia</span>
-          </a>
+          </div>
 
-<a class="partner-tile reveal" href="https://www.instagram.com/wearetechnologycenter/" target="_blank"
-            rel="noopener" title="We Are Technology Center" aria-label="We Are Technology Center">
+<div class="partner-tile reveal" data-name="We Are Technology Center" data-website="https://www.instagram.com/wearetechnologycenter/" data-description=""
+            title="We Are Technology Center" aria-label="We Are Technology Center" role="button" tabindex="0">
             <img src="Logos/watc.png" alt="We Are Technology Center logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">WATC</span>
-          </a>
+          </div>
 
-<a class="partner-tile reveal" href="https://www.instagram.com/ithouse.tn/" target="_blank" rel="noopener"
-            title="IT House" aria-label="IT House">
+<div class="partner-tile reveal" data-name="IT House" data-website="https://www.instagram.com/ithouse.tn/" data-description=""
+            title="IT House" aria-label="IT House" role="button" tabindex="0">
             <img src="Logos/ithouse.png" alt="IT House logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">IT House</span>
-          </a>
+          </div>
 
-<a class="partner-tile reveal" href="https://www.instagram.com/castello.salon.de.the/" target="_blank"
-            rel="noopener" title="Castello" aria-label="Castello">
+<div class="partner-tile reveal" data-name="Castello" data-website="https://www.instagram.com/castello.salon.de.the/" data-description=""
+            title="Castello" aria-label="Castello" role="button" tabindex="0">
             <img src="Logos/castello.png" alt="Castello logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">Castello</span>
-          </a>
+          </div>
 
-<a class="partner-tile reveal" href="ZEFZEF" target="_blank" rel="noopener"
-            title="EZDZEF" aria-label="EZDZEF">
+<div class="partner-tile reveal" data-name="EZDZEF" data-website="ZEFZEF" data-description=""
+            title="EZDZEF" aria-label="EZDZEF" role="button" tabindex="0">
             <img src="Logos/wlogo.png" alt="EZDZEF logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">ZEF</span>
-          </a>
+          </div>
 
-<a class="partner-tile reveal" href="sdff" target="_blank" rel="noopener"
-            title="dsfs" aria-label="dsfs">
+<div class="partner-tile reveal" data-name="dsfs" data-website="sdff" data-description=""
+            title="dsfs" aria-label="dsfs" role="button" tabindex="0">
             <img src="Logos/Layer_7.png" alt="dsfs logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">dsf</span>
-          </a>
+          </div>
         </div>
       </div>
     </section>
@@ -3876,6 +3877,38 @@
       overlay.addEventListener('click', closePanel);
       document.addEventListener('keydown', e => {
         if (e.key === 'Escape') closePanel();
+      });
+
+      // Partners reuse the same side panel
+      const partnerTiles = document.querySelectorAll('.partner-tile');
+      partnerTiles.forEach(tile => {
+        tile.addEventListener('click', () => {
+          const name = tile.dataset.name || tile.getAttribute('title') || '';
+          const website = tile.dataset.website || '';
+          const description = tile.dataset.description || '';
+          const logoImg = tile.querySelector('img');
+          const color = 'var(--ieee-blue)';
+
+          panel.style.setProperty('--unit-color', color);
+          panelTop.style.background = color;
+          panelLogo.innerHTML = logoImg ? `<img src="${logoImg.src}" alt="${logoImg.alt}">` : '';
+          panelTag.textContent = '';
+          panelTitle.textContent = name;
+          panelSummary.textContent = description;
+          panelDetails.textContent = '';
+          panelVisit.href = website;
+          panelVisit.style.display = website ? 'inline-flex' : 'none';
+
+          overlay.classList.add('active');
+          panel.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        });
+        tile.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            tile.click();
+          }
+        });
       });
     })();
 
