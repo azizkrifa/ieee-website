@@ -1,0 +1,586 @@
+"""
+recruitment_server.py
+----------------------
+Standalone Flask backend for recruitment.html ONLY (IEEE FSM Student Branch).
+
+index.html stays a plain static file (GitHub Pages / Netlify, etc.) and is
+NOT served or touched by this backend in any way. This server only serves:
+  - recruitment.html itself
+  - Logos/* (needed for the logo images on that page)
+  - its own /api/* and /admin/* routes
+
+What it does:
+  - Serves recruitment.html and Logos/* as static files, so you can run this
+    and open http://127.0.0.1:5000/recruitment.html
+  - POST /api/applications  -> validates + stores an application, books the
+    interview slot, enforces the security rules below.
+  - GET  /api/slots         -> returns which interview slots are already
+    taken, so the front-end can grey them out.
+  - GET  /admin/applications -> simple HTTP-Basic-Auth protected list of
+    all applications (for the branch team), with a CSV export link.
+
+Security / anti-spam rules:
+  1. Max MAX_SUBMISSIONS_PER_IP successful applications per IP address (default 5).
+  2. Minimum MIN_SECONDS_BETWEEN_SUBMISSIONS seconds between two attempts from
+     the same IP (blocks rapid-fire bot bursts), tracked in-memory.
+  3. Honeypot field ("company"): real users never see or fill this input
+     (it's hidden by CSS on the front-end). If it's filled, the request is
+     silently accepted-looking but dropped -> bots don't learn they were caught.
+  4. Full server-side re-validation of every field (never trust the client),
+     including the interview date/time against the exact allowed slot list.
+  5. One interview slot can only ever be booked once (DB UNIQUE constraint +
+     pre-check), so two people can't double-book 10:00 on the 15th.
+  6. One application per email / per ID number (no re-applying many times).
+  7. Request body size is capped (16 KB) to reject junk/flood payloads.
+
+Run it:
+  pip install flask
+  python recruitment_server.py
+  -> open http://127.0.0.1:5000/recruitment.html
+
+  Put this file next to recruitment.html and the Logos/ folder (index.html
+  does not need to be there — it's not served by this app).
+
+Configuration (optional environment variables):
+  ADMIN_USER, ADMIN_PASS   -> credentials for /admin/applications (defaults below - CHANGE THEM)
+  MAX_SUBMISSIONS_PER_IP   -> default 5
+  PORT                     -> default 5000
+"""
+
+import csv
+import io
+import os
+import re
+import sqlite3
+import time
+from datetime import datetime, date, timezone
+from functools import wraps
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+from flask import Flask, request, jsonify, g, Response, send_from_directory
+
+# ===================== CONFIG =====================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "applications.db")
+
+MAX_SUBMISSIONS_PER_IP = int(os.environ.get("MAX_SUBMISSIONS_PER_IP", 5))
+MIN_SECONDS_BETWEEN_SUBMISSIONS = int(os.environ.get("MIN_SECONDS_BETWEEN_SUBMISSIONS", 5))  
+
+ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
+ADMIN_PASS = os.environ.get("ADMIN_PASS", "admin")  
+
+# must match the days / times generated on the front-end (recruitment.html)
+INTERVIEW_DATES = ["2026-07-15", "2026-07-16", "2026-07-17", "2026-07-18"]
+START_HOUR, END_HOUR, SLOT_MIN = 10, 19, 15
+
+#==================== EMAIL =====================
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+
+SMTP_EMAIL = "ieee.fsm.studentbranch@gmail.com"
+SMTP_PASSWORD = "xhoq luxm subk jpjd"
+
+EMAIL_TEMPLATE = os.path.join(BASE_DIR, "E-Mail Template (Interview).html")
+
+def build_allowed_slots():
+    slots = []
+    h, m = START_HOUR, 0
+    while h < END_HOUR:
+        slots.append(f"{h:02d}:{m:02d}")
+        m += SLOT_MIN
+        if m >= 60:
+            m -= 60
+            h += 1
+    return slots
+
+
+ALLOWED_TIMES = build_allowed_slots()  # ['10:00', '10:15', ..., '18:45']
+
+STUDY_LEVELS = {"L1", "L2", "L3", "M1", "M2", "Engineering cycle", "PhD", "Other"}
+
+app = Flask(__name__, static_folder=None)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024  # 16 KB request body cap
+
+# in-memory last-attempt timestamps per IP (fine for a single-process app)
+_last_attempt_by_ip = {}
+
+
+# ===================== DB =====================
+
+def get_db():
+    if "db" not in g:
+        g.db = sqlite3.connect(DB_PATH)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(exception=None):
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
+
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            email TEXT NOT NULL,
+            study_level TEXT NOT NULL,
+            study_field TEXT NOT NULL,
+            birthday TEXT NOT NULL,
+            id_number TEXT NOT NULL,
+            interview_date TEXT NOT NULL,
+            interview_time TEXT NOT NULL,
+            ip_address TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(interview_date, interview_time),
+            UNIQUE(email),
+            UNIQUE(id_number)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+# ===================== VALIDATION HELPERS =====================
+
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+PHONE_RE = re.compile(r"^[+0-9 ()-]{6,20}$")
+ID_RE = re.compile(r"^[A-Za-z0-9]{4,20}$")
+
+
+def clean_str(value, max_len=200):
+    if not isinstance(value, str):
+        return ""
+    # strip control characters, collapse whitespace, cap length
+    value = "".join(ch for ch in value if ch.isprintable() or ch == " ")
+    return value.strip()[:max_len]
+
+
+def validate_payload(data):
+    """Returns (errors_dict, cleaned_data). errors_dict is empty if valid."""
+    errors = {}
+
+    full_name = clean_str(data.get("fullName"), 100)
+    phone = clean_str(data.get("phone"), 30)
+    email = clean_str(data.get("email"), 120).lower()
+    study_level = clean_str(data.get("studyLevel"), 40)
+    study_field = clean_str(data.get("studyField"), 100)
+    birthday = clean_str(data.get("birthday"), 20)
+    id_number = clean_str(data.get("idNumber"), 20)
+    interview_date = clean_str(data.get("interviewDate"), 20)
+    interview_time = clean_str(data.get("interviewTime"), 10)
+
+    if len(full_name) < 2:
+        errors["fullName"] = "Please enter your full name."
+    if not PHONE_RE.match(phone):
+        errors["phone"] = "Please enter a valid phone number."
+    if not EMAIL_RE.match(email):
+        errors["email"] = "Please enter a valid email."
+    if study_level not in STUDY_LEVELS:
+        errors["studyLevel"] = "Please select a valid study level."
+    if len(study_field) < 2:
+        errors["studyField"] = "Please enter your field of study."
+    try:
+        b_date = date.fromisoformat(birthday)
+        if b_date >= date.today():
+            errors["birthday"] = "Please enter a valid date of birth."
+    except (ValueError, TypeError):
+        errors["birthday"] = "Please enter a valid date of birth."
+    if not ID_RE.match(id_number):
+        errors["idNumber"] = "Please enter a valid ID number."
+    if interview_date not in INTERVIEW_DATES:
+        errors["interview"] = "Please choose a valid interview date and time."
+    elif interview_time not in ALLOWED_TIMES:
+        errors["interview"] = "Please choose a valid interview date and time."
+
+    cleaned = {
+        "full_name": full_name,
+        "phone": phone,
+        "email": email,
+        "study_level": study_level,
+        "study_field": study_field,
+        "birthday": birthday,
+        "id_number": id_number,
+        "interview_date": interview_date,
+        "interview_time": interview_time,
+    }
+    return errors, cleaned
+
+
+def client_ip():
+    # if you put this behind a reverse proxy (nginx, etc.), make sure it sets
+    # X-Forwarded-For and consider using a trusted-proxy-aware getter instead.
+    return request.headers.get("X-Forwarded-For", request.remote_addr).split(",")[0].strip()
+
+
+# ===================== AUTH (for /admin) =====================
+
+def requires_admin_auth(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        auth = request.authorization
+        if not auth or auth.username != ADMIN_USER or auth.password != ADMIN_PASS:
+            return Response(
+                "Authentication required.", 401,
+                {"WWW-Authenticate": 'Basic realm="IEEE FSM Admin"'}
+            )
+        return f(*args, **kwargs)
+    return wrapper
+
+
+# ===================== ROUTES: STATIC PAGES =====================
+# Only recruitment.html and its assets are served here. index.html is a
+# separate static site (GitHub Pages / Netlify) and is deliberately not
+# part of this backend at all.
+
+@app.route("/")
+def root():
+    # convenience redirect so http://127.0.0.1:5000/ also works
+    return send_from_directory(BASE_DIR, "recruitment.html")
+
+
+@app.route("/recruitment.html")
+def recruitment_page():
+    return send_from_directory(BASE_DIR, "recruitment.html")
+
+
+@app.route("/Logos/<path:filename>")
+def logos(filename):
+    return send_from_directory(os.path.join(BASE_DIR, "Logos"), filename)
+
+def send_interview_email(name, recipient, interview_date, interview_time):
+    try:
+
+        with open(EMAIL_TEMPLATE, "r", encoding="utf-8") as f:
+            html = f.read()
+
+        html = html.replace("{{NAME}}", name)
+        html = html.replace("{{DATE}}", interview_date)
+        html = html.replace("{{TIME}}", interview_time)
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "IEEE FSM SB - Interview Confirmation"
+        msg["From"] = SMTP_EMAIL
+        msg["To"] = recipient
+
+        msg.attach(MIMEText(html, "html"))
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+
+        server.send_message(msg)
+
+        server.quit()
+
+        print("Confirmation email sent to", recipient)
+
+    except Exception as e:
+        print("Email sending failed:", e)
+
+
+# ===================== ROUTES: API =====================
+
+@app.route("/api/slots", methods=["GET"])
+def get_slots():
+    db = get_db()
+    rows = db.execute(
+        "SELECT interview_date, interview_time FROM applications"
+    ).fetchall()
+
+    taken = {d: [] for d in INTERVIEW_DATES}
+    for row in rows:
+        if row["interview_date"] in taken:
+            taken[row["interview_date"]].append(row["interview_time"])
+
+    return jsonify({"taken": taken, "allDates": INTERVIEW_DATES, "allTimes": ALLOWED_TIMES})
+
+
+@app.route("/api/applications", methods=["POST"])
+def create_application():
+    ip = client_ip()
+    now = time.time()
+
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid request."}), 400
+
+    # ---- honeypot: bots fill every input, humans never see this one ----
+    if clean_str(data.get("company")):
+        # look successful to the bot, but don't actually store anything
+        return jsonify({"ok": True, "reference": "N/A"}), 201
+
+    # ---- rate limiting: burst throttle ----
+    last = _last_attempt_by_ip.get(ip)
+    if last is not None and (now - last) < MIN_SECONDS_BETWEEN_SUBMISSIONS:
+        return jsonify({"error": "You're submitting too fast. Please wait a few seconds and try again."}), 429
+    _last_attempt_by_ip[ip] = now
+
+    # ---- rate limiting: lifetime cap per IP ----
+    db = get_db()
+    ip_count = db.execute(
+        "SELECT COUNT(*) AS c FROM applications WHERE ip_address = ?", (ip,)
+    ).fetchone()["c"]
+    if ip_count >= MAX_SUBMISSIONS_PER_IP:
+        return jsonify({
+            "error": f"Maximum of {MAX_SUBMISSIONS_PER_IP} applications reached from this network. "
+                     f"If this is a mistake, please contact the branch directly."
+        }), 429
+
+    # ---- validation ----
+    errors, cleaned = validate_payload(data)
+    if errors:
+        return jsonify({"error": "Please fix the highlighted fields.", "fields": errors}), 400
+
+    # ---- duplicate person guard ----
+    dup = db.execute(
+        "SELECT id FROM applications WHERE email = ? OR id_number = ?",
+        (cleaned["email"], cleaned["id_number"]),
+    ).fetchone()
+    if dup:
+        return jsonify({"error": "An application with this email or ID number already exists."}), 409
+
+    # ---- slot booking (UNIQUE constraint is the real guarantee against races) ----
+    try:
+        cur = db.execute(
+            """INSERT INTO applications
+               (full_name, phone, email, study_level, study_field, birthday, id_number,
+                interview_date, interview_time, ip_address, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                cleaned["full_name"], cleaned["phone"], cleaned["email"],
+                cleaned["study_level"], cleaned["study_field"], cleaned["birthday"],
+                cleaned["id_number"], cleaned["interview_date"], cleaned["interview_time"],
+                ip, datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            ),
+        )
+        db.commit()
+
+        send_interview_email(cleaned["full_name"],cleaned["email"],cleaned["interview_date"],cleaned["interview_time"]
+)
+    except sqlite3.IntegrityError as e:
+        db.rollback()
+        msg = str(e)
+        if "interview_date" in msg or "interview_time" in msg:
+            return jsonify({"error": "That interview slot was just taken. Please pick another one."}), 409
+        return jsonify({"error": "An application with this email or ID number already exists."}), 409
+
+    return jsonify({"ok": True, "reference": cur.lastrowid}), 201
+
+@app.route("/admin/applications/<int:app_id>", methods=["DELETE"])
+@requires_admin_auth
+def delete_application(app_id):
+    db = get_db()
+
+    cur = db.execute("DELETE FROM applications WHERE id = ?", (app_id,))
+    db.commit()
+
+    if cur.rowcount == 0:
+        return jsonify({"error": "Application not found"}), 404
+
+    return jsonify({"ok": True})
+
+# ===================== ADMIN =====================
+
+ADMIN_PAGE_TEMPLATE = """
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Applications — IEEE FSM Admin</title>
+<style>
+  body {{ font-family: -apple-system, Arial, sans-serif; background:#0D1117; color:#E6EDF3; margin:0; padding:32px; }}
+  h1 {{ font-size:20px; margin-bottom:4px; }}
+  p.meta {{ color:#7D94A8; font-size:13px; margin-top:0 0 20px; }}
+  table {{ border-collapse: collapse; width:100%; font-size:13px; }}
+  th, td {{ border:1px solid #263141; padding:8px 10px; text-align:left; white-space:nowrap; }}
+  th {{ background:#141922; position:sticky; top:0; }}
+  tr:nth-child(even) {{ background:#141922; }}
+  a.export {{ color:#60B8EE; font-size:13px; }}
+  .delete-btn{{ background:#d32f2f;
+    color:white;
+    border:none;
+    padding:6px 12px;
+    border-radius:6px;
+    cursor:pointer;
+}}
+
+   .delete-btn:hover{{
+    background:#b71c1c;
+  }}
+
+</style></head><body>
+<h1>IEEE FSM — Applications ({count})</h1>
+<p class="meta"><a class="export" href="/admin/applications.csv">Download CSV</a></p>
+<input id="searchInput" type="text" placeholder="Search by name, email, phone, ID..."
+    style="
+        width:30%;
+        padding:10px;
+        margin:15px 0;
+        border-radius:8px;
+        border:1px solid #333;
+        background:#141922;
+        color:white;
+    ">
+<table><thead>
+<tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Level</th><th>Field</th>
+<th>Birthday</th><th>ID</th><th>Interview</th><th>IP</th><th>Submitted</th>
+<th>Actions</th></tr></thead><tbody id="applicationsBody">{rows}</tbody>
+</table>
+
+<script>
+const searchInput = document.getElementById("searchInput");
+
+searchInput.addEventListener("keyup", function () {{
+
+    const value = this.value.toLowerCase();
+
+    document.querySelectorAll("table tbody tr").forEach(row => {{
+
+        row.style.display =
+            row.innerText.toLowerCase().includes(value)
+            ? ""
+            : "";
+
+    }});
+
+}});
+
+
+async function deleteApplication(id){{
+
+    if(!confirm("Delete this application?"))
+        return;
+
+    const res = await fetch("/admin/applications/" + id,{{
+        method:"DELETE",
+        headers:{{
+            "Authorization":"Basic " + btoa("admin:admin")
+        }}
+    }});
+
+    if(res.ok){{
+
+        location.reload();
+
+    }}else{{
+
+        alert("Unable to delete application.");
+
+    }}
+
+}}
+
+async function refreshApplications() {{
+
+    const res = await fetch("/admin/applications/json", {{
+        headers: {{
+            "Authorization": "Basic " + btoa("admin:admin")
+        }}
+    }});
+
+    const data = await res.json();
+
+    const tbody = document.getElementById("applicationsBody");
+
+    tbody.innerHTML = data.map(a => `
+        <tr>
+            <td>${{a.id}}</td>
+            <td>${{a.full_name}}</td>
+            <td>${{a.phone}}</td>
+            <td>${{a.email}}</td>
+            <td>${{a.study_level}}</td>
+            <td>${{a.study_field}}</td>
+            <td>${{a.birthday}}</td>
+            <td>${{a.id_number}}</td>
+            <td>${{a.interview_date}} ${{a.interview_time}}</td>
+            <td>${{a.ip_address}}</td>
+            <td>${{a.created_at}}</td>
+            <td>
+                <button class="delete-btn"
+                    onclick="deleteApplication(${{a.id}})">
+                    Delete
+                </button>
+            </td>
+        </tr>
+    `).join("");
+}}
+
+setInterval(refreshApplications, 5000);
+
+</script>
+
+</body></html>
+"""
+
+
+def _fetch_all_applications(db):
+    return db.execute(
+        "SELECT * FROM applications ORDER BY interview_date, interview_time"
+    ).fetchall()
+
+
+@app.route("/admin/applications")
+@requires_admin_auth
+def admin_applications():
+    db = get_db()
+    apps = _fetch_all_applications(db)
+    rows_html = "".join(
+        f"<tr><td>{a['id']}</td><td>{a['full_name']}</td><td>{a['phone']}</td>"
+        f"<td>{a['email']}</td><td>{a['study_level']}</td><td>{a['study_field']}</td>"
+        f"<td>{a['birthday']}</td><td>{a['id_number']}</td>"
+        f"<td>{a['interview_date']} {a['interview_time']}</td>"
+        f"<td>{a['ip_address']}</td><td>{a['created_at']}</td><td>"
+        f"<button class=\"delete-btn\" onclick=\"deleteApplication({a['id']})\">"
+        f"Delete"
+        f"</button>"
+        f"</td></tr>"
+        for a in apps
+    )
+    return ADMIN_PAGE_TEMPLATE.format(count=len(apps), rows=rows_html)
+
+@app.route("/admin/applications/json")
+@requires_admin_auth
+def admin_applications_json():
+    db = get_db()
+    apps = _fetch_all_applications(db)
+
+    return jsonify([
+        dict(a) for a in apps
+    ])
+
+@app.route("/admin/applications.csv")
+@requires_admin_auth
+def admin_applications_csv():
+    db = get_db()
+    apps = _fetch_all_applications(db)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["id", "full_name", "phone", "email", "study_level", "study_field",
+                      "birthday", "id_number", "interview_date", "interview_time",
+                      "ip_address", "created_at"])
+    for a in apps:
+        writer.writerow([a[k] for k in a.keys()])
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=applications.csv"},
+    )
+
+
+# ===================== ENTRY POINT =====================
+
+if __name__ == "__main__":
+    init_db()
+    port = int(os.environ.get("PORT", 5000))
+    print(f" * Applications DB: {DB_PATH}")
+    print(f" * Recruitment page: http://127.0.0.1:{port}/recruitment.html")
+    print(f" * Admin panel:      http://127.0.0.1:{port}/admin/applications  (user: {ADMIN_USER})")
+    if ADMIN_PASS == "changeme":
+        print(" ! WARNING: using the default admin password — set ADMIN_USER / ADMIN_PASS env vars before going live.")
+    app.run(host="127.0.0.1", port=port, debug=False)
