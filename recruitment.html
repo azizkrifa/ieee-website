@@ -2430,7 +2430,7 @@
   <style>
     /* ===================== RECRUITMENT PAGE ===================== */
     .apply-hero {
-      padding: calc(var(--nav-h) + 64px) 0 40px;
+      padding: calc(var(--nav-h) + 20px) 0 40px;
     }
 
     .apply-hero .back-link {
@@ -2648,6 +2648,67 @@
       padding-right: 4px;
     }
 
+    @media (max-width: 768px) {
+      .confirm-card {
+        max-width: 100%;
+        padding: 30px 24px;
+      }
+
+      .confirm-icon {
+        width: 64px;
+        height: 64px;
+      }
+
+      .confirm-icon .icon {
+        width: 36px;
+        height: 36px;
+      }
+
+      .confirm-card h3 {
+        font-size: 26px;
+      }
+
+      .confirm-card p {
+        font-size: 15px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .confirm-card {
+        padding: 24px 18px;
+        border-radius: 12px;
+      }
+
+      .confirm-icon {
+        width: 56px;
+        height: 56px;
+        margin-bottom: 16px;
+      }
+
+      .confirm-icon .icon {
+        width: 32px;
+        height: 32px;
+      }
+
+      .confirm-card h3 {
+        font-size: 22px;
+      }
+
+      .confirm-card p {
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .confirm-summary {
+        font-size: 14px;
+      }
+
+      /* Button stays exactly as it is */
+      .confirm-actions .btn {
+        width: auto;
+      }
+    }
+
     @media (max-width: 520px) {
       .slot-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -2766,17 +2827,17 @@
     /* ---- confirmation panel ---- */
 
 
-
     .confirm-card {
       display: none;
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
       border: 1px solid rgba(59, 158, 219, 0.14);
       border-radius: var(--radius);
       padding: 40px;
       background: rgba(59, 158, 219, 0.05);
-      box-shadow: inset 0 0 30px rgba(59, 158, 219, 0.06);
-      width: 50%;
-      margin: 0 auto;
       text-align: center;
+      box-shadow: 0 0 30px rgba(59, 158, 219, 0.06) inset;
     }
 
     .confirm-card.show {
@@ -2885,7 +2946,8 @@
   <nav class="nav" id="mainNav">
     <div class="container">
 
-      <a href="https://ieee-fsm-website.vercel.app/"><img id="navIeeeLogo" alt="IEEE FSM Student Branch" src="Logos/ieee-fsm-white.svg"></a>
+      <a href="https://ieee-fsm-website.vercel.app/"><img id="navIeeeLogo" alt="IEEE FSM Student Branch"
+          src="Logos/ieee-fsm-white.svg"></a>
       <div class="nav-links">
         <a href="https://ieee-fsm-website.vercel.app/#home">Home</a>
         <a href="https://ieee-fsm-website.vercel.app/#about">About</a>
