@@ -58,30 +58,51 @@ from functools import wraps
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from dotenv import load_dotenv
 
 from flask import Flask, request, jsonify, g, Response, send_from_directory
 
 # ===================== CONFIG =====================
 
+load_dotenv()
+
+# ==================== PATHS ====================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "applications.db")
 
-MAX_SUBMISSIONS_PER_IP = int(os.environ.get("MAX_SUBMISSIONS_PER_IP", 5))
-MIN_SECONDS_BETWEEN_SUBMISSIONS = int(os.environ.get("MIN_SECONDS_BETWEEN_SUBMISSIONS", 5))  
+DB_PATH = os.getenv(
+    "DB_PATH",
+    os.path.join(BASE_DIR, "applications.db")
+)
 
-ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
-ADMIN_PASS = os.environ.get("ADMIN_PASS", "admin")  
+# ==================== SECURITY ====================
+MAX_SUBMISSIONS_PER_IP = int(
+    os.getenv("MAX_SUBMISSIONS_PER_IP")
+)
 
-# must match the days / times generated on the front-end (recruitment.html)
-INTERVIEW_DATES = ["2026-07-15", "2026-07-16", "2026-07-17", "2026-07-18"]
-START_HOUR, END_HOUR, SLOT_MIN = 10, 19, 15
+MIN_SECONDS_BETWEEN_SUBMISSIONS = int(
+    os.getenv("MIN_SECONDS_BETWEEN_SUBMISSIONS")
+)
 
-#==================== EMAIL =====================
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
+# ==================== ADMIN ====================
+ADMIN_USER = os.getenv("ADMIN_USERNAME")
+ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
 
-SMTP_EMAIL = "ieee.fsm.studentbranch@gmail.com"
-SMTP_PASSWORD = "xhoq luxm subk jpjd"
+# ==================== INTERVIEW ====================
+INTERVIEW_DATES = [
+    d.strip()
+    for d in os.getenv("INTERVIEW_DATES",).split(",")
+]
+
+START_HOUR = int(os.getenv("START_HOUR"))
+END_HOUR = int(os.getenv("END_HOUR"))
+SLOT_MIN = int(os.getenv("SLOT_MIN"))
+
+# ==================== EMAIL ====================
+SMTP_SERVER = os.getenv("SMTP_SERVER")
+SMTP_PORT = int(os.getenv("SMTP_PORT"))
+
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 EMAIL_TEMPLATE = os.path.join(BASE_DIR, "E-Mail Template (Interview).html")
 
@@ -577,10 +598,8 @@ def admin_applications_csv():
 
 if __name__ == "__main__":
     init_db()
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT1"))
     print(f" * Applications DB: {DB_PATH}")
     print(f" * Recruitment page: http://127.0.0.1:{port}/recruitment.html")
-    print(f" * Admin panel:      http://127.0.0.1:{port}/admin/applications  (user: {ADMIN_USER})")
-    if ADMIN_PASS == "changeme":
-        print(" ! WARNING: using the default admin password — set ADMIN_USER / ADMIN_PASS env vars before going live.")
+    print(f" * Admin panel:      http://127.0.0.1:{port}/admin/applications")
     app.run(host="127.0.0.1", port=port, debug=False)

@@ -4,7 +4,7 @@ IEEE FSM Student Branch — local content admin server.
 
 Run this from inside your local repo (same folder as index.html), or point
 INDEX_HTML_PATH below at it. It serves a small dashboard at
-http://127.0.0.1:5055 that reads your real index.html, lets you add/edit/
+http://127.0.0.1:5500/admin that reads your real index.html, lets you add/edit/
 reorder activities, units, and hero stats, uploads images straight into your
 repo's image folders, and writes changes directly back into index.html.
 
@@ -20,12 +20,17 @@ import html as html_lib
 import shutil
 import datetime
 import subprocess
+from functools import wraps
 from flask import Flask, request, jsonify, Response
+from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 
 # ============================================================
 # CONFIG — edit these to match your repo layout
 # ============================================================
+
+load_dotenv()
+
 INDEX_HTML_PATH = "index.html"       # path to your site's index.html
 ACTIVITIES_IMG_DIR = "Act_Images"    # folder used by <img src="Act_Images/...">
 UNITS_IMG_DIR = "Unit_Images"        # folder for unit logos (adjust if yours differs)
@@ -34,7 +39,9 @@ PARTNERS_IMG_DIR = "Logos"           # folder used by <img src="Logos/...">
 GALLERY_IMG_DIR = "gallery"          # folder used by <img src="gallery/...">
 IMG_DIR = "Images"                   # folder for other images (not used by this tool, but git push includes it)
 REPO_DIR = "."                       # folder containing your git repo — usually same folder as this script
-PORT = 5055
+PORT = int(os.getenv("PORT2"))
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 DEFAULT_YEAR = str(datetime.datetime.now().year)
 
 app = Flask(__name__)
@@ -600,11 +607,32 @@ def write_index_html_safely(new_html, context=""):
     with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
         f.write(new_html)
 
+def check_auth(username, password):
+    return username == ADMIN_USERNAME and password == ADMIN_PASSWORD
+
+def authenticate():
+    return Response(
+        "Authentication required.",
+        401,
+        {
+            "WWW-Authenticate": 'Basic realm="IEEE FSM Admin"'
+        },
+    )
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
 
 # ============================================================
 # Routes
 # ============================================================
 @app.route("/api/state")
+@requires_auth
 def api_state():
     try:
         html = read_index_html()
@@ -621,6 +649,7 @@ def api_state():
 
 
 @app.route("/api/upload", methods=["POST"])
+@requires_auth
 def api_upload():
     file = request.files.get("file")
     target_dir = request.form.get("dir", ACTIVITIES_IMG_DIR)
@@ -654,6 +683,7 @@ def api_upload():
 
 
 @app.route("/api/save", methods=["POST"])
+@requires_auth
 def api_save():
     try:
         data = request.get_json()
@@ -680,6 +710,7 @@ def api_save():
 
 
 @app.route("/api/sections")
+@requires_auth
 def api_sections():
     try:
         html = read_index_html()
@@ -689,6 +720,7 @@ def api_sections():
 
 
 @app.route("/api/section/<section_id>", methods=["GET"])
+@requires_auth
 def api_get_section(section_id):
     html = read_index_html()
     span = find_section_span_by_id(html, section_id)
@@ -699,6 +731,7 @@ def api_get_section(section_id):
 
 
 @app.route("/api/section/<section_id>", methods=["POST"])
+@requires_auth
 def api_save_section(section_id):
     try:
         data = request.get_json()
@@ -718,11 +751,13 @@ def api_save_section(section_id):
 
 
 @app.route("/api/fullfile", methods=["GET"])
+@requires_auth
 def api_get_fullfile():
     return jsonify({"ok": True, "html": read_index_html()})
 
 
 @app.route("/api/fullfile", methods=["POST"])
+@requires_auth
 def api_save_fullfile():
     try:
         data = request.get_json()
@@ -779,6 +814,7 @@ def parse_git_status_porcelain(out):
 
 
 @app.route("/api/git/status")
+@requires_auth
 def api_git_status():
     try:
         code, out, err = run_git(["status", "--porcelain", "--"] + tracked_paths())
@@ -793,6 +829,7 @@ def api_git_status():
 
 
 @app.route("/api/git/pull-status")
+@requires_auth
 def api_git_pull_status():
     """Fetch from the remote (without merging) and report how many commits
     the current branch is behind/ahead of its upstream, so the dashboard
@@ -825,6 +862,7 @@ def api_git_pull_status():
 
 
 @app.route("/api/git/pull", methods=["POST"])
+@requires_auth
 def api_git_pull():
     """Runs a real `git pull`. Only called when the user explicitly clicks
     Pull after seeing there are unpulled commits — nothing here happens
@@ -848,6 +886,7 @@ def api_git_pull():
 
 
 @app.route("/api/git/push", methods=["POST"])
+@requires_auth
 def api_git_push():
     log = []
     try:
@@ -900,6 +939,7 @@ def scoped_paths():
 
 
 @app.route("/api/git/log")
+@requires_auth
 def api_git_log():
     """List recent pushed/committed history for the files this tool manages,
     so the dashboard can show 'here's what changed and when' with a revert
@@ -931,6 +971,7 @@ def api_git_log():
 
 
 @app.route("/api/git/revert", methods=["POST"])
+@requires_auth
 def api_git_revert():
     """Restore index.html + the image folders to how they looked at an
     older commit, then commit and push that restoration as a brand-new
@@ -999,6 +1040,8 @@ def api_git_revert():
 
 
 @app.route("/")
+@app.route("/admin")
+@requires_auth
 def index():
     return Response(DASHBOARD_HTML, mimetype="text/html")
 
@@ -1949,6 +1992,10 @@ refreshHistory();
 """
 
 if __name__ == "__main__":
-    print(f"\n  IEEE FSM local admin running at http://127.0.0.1:{PORT}")
-    print(f"  Editing: {os.path.abspath(INDEX_HTML_PATH)}\n")
-    app.run(port=PORT, debug=False)
+    print(f"\nIEEE FSM local admin running at http://127.0.0.1:{PORT}/admin")
+    print(f"Editing: {os.path.abspath(INDEX_HTML_PATH)}\n")
+    app.run(
+        host="127.0.0.1",
+        port=PORT,
+        debug=False
+    )
