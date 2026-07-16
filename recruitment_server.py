@@ -458,20 +458,14 @@ ADMIN_PAGE_TEMPLATE = """
 const searchInput = document.getElementById("searchInput");
 
 searchInput.addEventListener("keyup", function () {{
-
     const value = this.value.toLowerCase();
 
-    document.querySelectorAll("table tbody tr").forEach(row => {{
-
-        row.style.display =
-            row.innerText.toLowerCase().includes(value)
+    document.querySelectorAll("#applicationsBody tr").forEach(row => {{
+        row.style.display = row.innerText.toLowerCase().includes(value)
             ? ""
-            : "";
-
+            : "none";
     }});
-
 }});
-
 
 async function deleteApplication(id){{
 
@@ -530,6 +524,15 @@ async function refreshApplications() {{
             </td>
         </tr>
     `).join("");
+
+    // Reapply current filter
+    const value = searchInput.value.toLowerCase();
+
+    document.querySelectorAll("#applicationsBody tr").forEach(row => {{
+        row.style.display = row.innerText.toLowerCase().includes(value)
+           ? ""
+           : "none";
+    }});
 }}
 
 setInterval(refreshApplications, 5000);
