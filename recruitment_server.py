@@ -49,6 +49,7 @@ Configuration (optional environment variables):
 
 import csv
 import io
+import logging
 import os
 import re
 import sqlite3
@@ -74,6 +75,8 @@ DB_PATH = os.getenv(
     "DB_PATH",
     os.path.join(BASE_DIR, "applications.db")
 )
+
+BLACKLIST_PATH = os.path.join(BASE_DIR, "blacklist.txt")
 
 # ==================== SECURITY ====================
 MAX_SUBMISSIONS_PER_IP = int(
@@ -125,6 +128,56 @@ STUDY_LEVELS = {"L1", "L2", "L3", "M1", "M2", "Engineering cycle", "PhD", "Other
 
 app = Flask(__name__, static_folder=None)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024  # 16 KB request body cap
+
+# Werkzeug's built-in per-request console line (e.g. "127.0.0.1 - - [..] ...")
+# logs the raw TCP peer address, colorized by status code. Behind a tunnel
+# (ngrok / Cloudflare Tunnel) that peer is always localhost, not the real
+# visitor -- so we silence it and print our own line using client_ip()
+# (defined below), re-using the same color scheme Werkzeug uses.
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+
+try:
+    import colorama
+    colorama.init(autoreset=True)  # makes ANSI colors work in Windows cmd/PowerShell too
+except ImportError:
+    pass
+
+_ANSI_RESET = "\033[0m"
+_ANSI_BOLD = "\033[1m"
+_ANSI_WHITE = "\033[37m"
+_ANSI_CYAN = "\033[36m"
+_ANSI_GREEN = "\033[32m"
+_ANSI_YELLOW = "\033[33m"
+_ANSI_RED = "\033[31m"
+_ANSI_MAGENTA = "\033[35m"
+
+
+def _status_color(status_code):
+    code = str(status_code)
+    if code =="201":
+        return _ANSI_MAGENTA + _ANSI_BOLD
+    if code.startswith("1"):
+        return _ANSI_BOLD
+    if code.startswith("2"):
+        return _ANSI_WHITE
+    if code == "304":
+        return _ANSI_CYAN
+    if code.startswith("3"):
+        return _ANSI_GREEN
+    if code == "404":
+        return _ANSI_YELLOW
+    if code.startswith("4"):
+        return _ANSI_RED + _ANSI_BOLD
+    return _ANSI_MAGENTA + _ANSI_BOLD  # 5xx
+
+
+@app.after_request
+def log_with_real_client_ip(response):
+    color = _status_color(response.status_code)
+    timestamp = datetime.now().strftime("%d/%b/%Y %H:%M:%S")
+    print(f'{client_ip()} - [{timestamp}] "{color}{request.method}{color} {request.path}" {color}{response.status_code}{_ANSI_RESET}')
+    return response
+
 
 # in-memory last-attempt timestamps per IP (fine for a single-process app)
 _last_attempt_by_ip = {}
@@ -238,9 +291,53 @@ def validate_payload(data):
 
 
 def client_ip():
-    # if you put this behind a reverse proxy (nginx, etc.), make sure it sets
-    # X-Forwarded-For and consider using a trusted-proxy-aware getter instead.
-    return request.headers.get("X-Forwarded-For", request.remote_addr).split(",")[0].strip()
+    # Behind a tunnel (ngrok, Cloudflare Tunnel) or reverse proxy, the raw
+    # TCP connection Flask sees is always localhost -- the real visitor's IP
+    # travels in a header instead. Checked in order of trustworthiness:
+    #   - CF-Connecting-IP / True-Client-IP: set by Cloudflare (incl. Cloudflare
+    #     Tunnel / cloudflared) directly to the real visitor IP, no parsing needed.
+    #   - X-Forwarded-For: set by ngrok and most other proxies; may contain a
+    #     comma-separated chain, so take the first (original client) entry.
+    #   - falls back to the raw socket address if none of the above are present
+    #     (e.g. running with no tunnel/proxy at all, straight on localhost/LAN).
+    for header in ("CF-Connecting-IP", "True-Client-IP"):
+        value = request.headers.get(header)
+        if value:
+            return value.strip()
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr
+
+
+# ===================== BLACKLIST (blacklist.txt) =====================
+# One IP per line. '#' starts a comment (whole-line or trailing after the
+# IP). Re-read on every check, so an admin can edit it by hand (e.g. to
+# manually block someone) without restarting the server.
+
+def load_blacklist():
+    ips = set()
+    if not os.path.exists(BLACKLIST_PATH):
+        return ips
+    with open(BLACKLIST_PATH, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.split("#", 1)[0].strip()  # drop comments
+            if line:
+                ips.add(line)
+    return ips
+
+
+def is_blacklisted(ip):
+    return ip in load_blacklist()
+
+
+def add_to_blacklist(ip, reason=""):
+    if ip in load_blacklist():
+        return  # already there, don't add a duplicate line
+    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    comment = f"  # auto-blocked {timestamp}" + (f" - {reason}" if reason else "")
+    with open(BLACKLIST_PATH, "a", encoding="utf-8") as f:
+        f.write(f"{ip}{comment}\n")
 
 
 # ===================== AUTH (for /admin) =====================
@@ -265,7 +362,6 @@ def requires_admin_auth(f):
 
 @app.route("/")
 def root():
-    # convenience redirect so http://127.0.0.1:5000/ also works
     return send_from_directory(BASE_DIR, "recruitment.html")
 
 
@@ -331,6 +427,13 @@ def create_application():
     ip = client_ip()
     now = time.time()
 
+    # ---- blacklist: blocked IPs (manual or auto) can't submit at all ----
+    if is_blacklisted(ip):
+        return jsonify({
+            "error": "You've been blocked from submitting applications. "
+                     "If you think this is a mistake, please contact the branch directly."
+        }), 403
+
     data = request.get_json(silent=True)
     if data is None:
         return jsonify({"error": "Invalid request."}), 400
@@ -352,6 +455,7 @@ def create_application():
         "SELECT COUNT(*) AS c FROM applications WHERE ip_address = ?", (ip,)
     ).fetchone()["c"]
     if ip_count >= MAX_SUBMISSIONS_PER_IP:
+        add_to_blacklist(ip, reason=f"reached max of {MAX_SUBMISSIONS_PER_IP} submissions")
         return jsonify({
             "error": f"Maximum of {MAX_SUBMISSIONS_PER_IP} applications reached from this network. "
                      f"If this is a mistake, please contact the branch directly."
@@ -381,8 +485,9 @@ def create_application():
                 cleaned["full_name"], cleaned["phone"], cleaned["email"],
                 cleaned["study_level"], cleaned["study_field"], cleaned["birthday"],
                 cleaned["id_number"], cleaned["interview_date"], cleaned["interview_time"],
-                ip, datetime.now(ZoneInfo("Africa/Tunis")).replace(tzinfo=None).isoformat(timespec="seconds")),
+                ip, datetime.now(ZoneInfo("Africa/Tunis")).replace(tzinfo=None).isoformat(timespec="seconds"),
             ),
+        )
         db.commit()
 
         send_interview_email(cleaned["full_name"],cleaned["email"],cleaned["interview_date"],cleaned["interview_time"]
@@ -539,7 +644,8 @@ setInterval(refreshApplications, 5000);
 
 </script>
 
-</body></html>
+</body>
+</html>
 """
 
 

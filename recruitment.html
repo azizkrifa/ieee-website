@@ -3344,6 +3344,7 @@
       function showBanner(msg) {
         errorBanner.textContent = msg;
         errorBanner.style.display = 'block';
+        errorBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       function hideBanner() {
         errorBanner.style.display = 'none';
