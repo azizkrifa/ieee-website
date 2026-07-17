@@ -54,6 +54,7 @@ import re
 import sqlite3
 import time
 from datetime import datetime, date, timezone
+from zoneinfo import ZoneInfo
 from functools import wraps
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -380,9 +381,8 @@ def create_application():
                 cleaned["full_name"], cleaned["phone"], cleaned["email"],
                 cleaned["study_level"], cleaned["study_field"], cleaned["birthday"],
                 cleaned["id_number"], cleaned["interview_date"], cleaned["interview_time"],
-                ip, datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                ip, datetime.now(ZoneInfo("Africa/Tunis")).replace(tzinfo=None).isoformat(timespec="seconds")),
             ),
-        )
         db.commit()
 
         send_interview_email(cleaned["full_name"],cleaned["email"],cleaned["interview_date"],cleaned["interview_time"]
