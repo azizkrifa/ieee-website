@@ -988,14 +988,18 @@
     }
 
     html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"] img {
-      filter: brightness(0.5);
-      opacity: 1;
+      filter: brightness(0);
+      opacity: 0.55;
     }
 
     html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"]:hover img,
     html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"]:focus-visible img {
       filter: brightness(0);
       opacity: 1;
+    }
+
+    html[data-theme="light"] #unitPanel[data-active-partner="Tarantino Cafe"] .unit-panel-logo img {
+      filter: brightness(0);
     }
 
     /* ===================== ACTIVITIES (timeline) ===================== */
@@ -3893,6 +3897,7 @@
         const details = card.dataset.details || '';
 
         panel.style.setProperty('--unit-color', color);
+        panel.removeAttribute('data-active-partner');
         panelTop.style.background = color;
         panelLogo.innerHTML = logoImg ? `<img src="${logoImg.src}" alt="${logoImg.alt}">` : '';
         panelTag.textContent = tag ? tag.textContent : '';
@@ -3934,6 +3939,7 @@
           const color = 'var(--ieee-blue)';
 
           panel.style.setProperty('--unit-color', color);
+          panel.dataset.activePartner = name;
           panelTop.style.background = color;
           panelLogo.innerHTML = logoImg ? `<img src="${logoImg.src}" alt="${logoImg.alt}">` : '';
           panelTag.textContent = '';
