@@ -969,6 +969,24 @@
       opacity: 0.6;
     }
 
+
+    /* Circular badge variant — used for Tarantinoo & WATC */
+    .partner-tile--circle {
+      width: 124px;
+      height: 124px;
+    }
+
+    .partner-tile--circle img {
+      width: 84px;
+      height: 84px;
+      max-width: none;
+      max-height: none;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--surface);
+      border: 1px solid var(--line);
+    }
+
     /* ===================== ACTIVITIES (timeline) ===================== */
     .activities {
       padding: 110px 0;
@@ -2830,13 +2848,13 @@
             <span class="partner-fallback">IEEE</span>
           </div>
 
-          <div class="partner-tile reveal" data-name="Tarantinoo Cafe"
+          <div class="partner-tile partner-tile--circle reveal" data-name="Tarantino Cafe"
             data-website="https://www.instagram.com/tarantino.monastir/"
-            data-description="Tarantinoo Café has been one of IEEE FSM SB's trusted partners, supporting our events and providing exclusive offers for our members."
-            title="Tarantinoo Cafe" aria-label="Tarantinoo Cafe" role="button" tabindex="0">
-            <img src="Logos/tarantinoo.png" alt="Tarantinoo Cafe logo"
+            data-description="Tarantino Café has been one of IEEE FSM SB's trusted partners, supporting our events and providing exclusive offers for our members."
+            title="Tarantino Cafe" aria-label="Tarantino Cafe" role="button" tabindex="0">
+            <img src="Logos/tarantino.jpg" alt="Tarantino Cafe logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <span class="partner-fallback">Tarantinoo</span>
+            <span class="partner-fallback">Tarantino</span>
           </div>
 
           <div class="partner-tile reveal" data-name="Funtopia" data-website="https://www.instagram.com/funtopia.game/"
@@ -2847,11 +2865,11 @@
             <span class="partner-fallback">Funtopia</span>
           </div>
 
-          <div class="partner-tile reveal" data-name="We Are Technology Center"
+          <div class="partner-tile partner-tile--circle reveal" data-name="We Are Technology Center"
             data-website="https://www.instagram.com/wearetechnologycenter/"
             data-description="We Are Technology Center (WATC) is a nationally recognized training center based in Monastir, supporting innovation and technical skill development."
             title="We Are Technology Center" aria-label="We Are Technology Center" role="button" tabindex="0">
-            <img src="Logos/watc.png" alt="We Are Technology Center logo"
+            <img src="Logos/watc.jpg" alt="We Are Technology Center logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">WATC</span>
           </div>
@@ -2880,12 +2898,6 @@
             <span class="partner-fallback">ZEF</span>
           </div>
 
-          <div class="partner-tile reveal" data-name="dsfs" data-website="sdff" data-description="" title="dsfs"
-            aria-label="dsfs" role="button" tabindex="0">
-            <img src="Logos/Layer_7.png" alt="dsfs logo"
-              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <span class="partner-fallback">dsf</span>
-          </div>
         </div>
       </div>
     </section>
