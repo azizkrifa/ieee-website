@@ -987,6 +987,17 @@
       border: 1px solid var(--line);
     }
 
+    html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"] img {
+      filter: brightness(0.5);
+      opacity: 1;
+    }
+
+    html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"]:hover img,
+    html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"]:focus-visible img {
+      filter: brightness(0);
+      opacity: 1;
+    }
+
     /* ===================== ACTIVITIES (timeline) ===================== */
     .activities {
       padding: 110px 0;
@@ -2848,11 +2859,11 @@
             <span class="partner-fallback">IEEE</span>
           </div>
 
-          <div class="partner-tile partner-tile--circle reveal" data-name="Tarantino Cafe"
+          <div class="partner-tile reveal" data-name="Tarantino Cafe"
             data-website="https://www.instagram.com/tarantino.monastir/"
             data-description="Tarantino Café has been one of IEEE FSM SB's trusted partners, supporting our events and providing exclusive offers for our members."
             title="Tarantino Cafe" aria-label="Tarantino Cafe" role="button" tabindex="0">
-            <img src="Logos/tarantino.jpg" alt="Tarantino Cafe logo"
+            <img src="Logos/tarantinoo.png" alt="Tarantino Cafe logo"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <span class="partner-fallback">Tarantino</span>
           </div>
