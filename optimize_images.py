@@ -33,13 +33,18 @@ the script and are happy with the output quality/size.)
 import os
 import sys
 from pathlib import Path
-
+import subprocess
+import shutil
 from PIL import Image, ImageOps
 
 MAX_WIDTH = 1600      # px — plenty for anything on this page, phones shoot 3000-4000px
 QUALITY = 78          # 70-85 is a good quality/size balance for photos
 SKIP_DIRS = {"optimized", "node_modules", ".git"}
-VALID_EXT = {".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG"}
+VALID_EXT = {
+    ".jpg", ".jpeg", ".png",
+    ".JPG", ".JPEG", ".PNG",
+    ".mp4", ".MP4"
+}
 
 
 def optimize_one(src_path: Path, out_root: Path, in_root: Path):
@@ -68,6 +73,44 @@ def optimize_one(src_path: Path, out_root: Path, in_root: Path):
     print(f"{rel}: {before/1024:.0f} KB -> {after/1024:.0f} KB (jpg+webp combined)")
 
 
+
+def optimize_video(src_path: Path, out_root: Path, in_root: Path):
+    rel = src_path.relative_to(in_root)
+    out_dir = out_root / rel.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    out_file = out_dir / rel.name
+
+    if shutil.which("ffmpeg") is None:
+        print("FFmpeg not found. Skipping video:", src_path)
+        return
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i", str(src_path),
+        "-c:v", "libx264",
+        "-crf", "28",          # 23 = higher quality, 28 = smaller files
+        "-preset", "slow",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-movflags", "+faststart",
+        str(out_file)
+    ]
+
+    subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=True
+    )
+
+    before = src_path.stat().st_size
+    after = out_file.stat().st_size
+
+    print(f"{rel}: {before/1024/1024:.2f} MB -> {after/1024/1024:.2f} MB")
+
+
 def main(folders):
     if not folders:
         print("Usage: python optimize_images.py <folder1> [folder2] ...")
@@ -83,10 +126,13 @@ def main(folders):
         for path in in_root.rglob("*"):
             if path.is_dir() or "optimized" in path.parts:
                 continue
-            if path.suffix not in VALID_EXT:
-                continue
+
             try:
-                optimize_one(path, out_root, in_root)
+                if path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
+                    continue  # Skip image optimization for now
+                    optimize_one(path, out_root, in_root)
+                elif path.suffix.lower() == ".mp4":
+                    optimize_video(path, out_root, in_root)
             except Exception as e:
                 print(f"! failed on {path}: {e}")
 
