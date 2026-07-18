@@ -987,18 +987,22 @@
       border: 1px solid var(--line);
     }
 
-    html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"] img {
+    html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"] img,
+    html[data-theme="light"] .partner-tile[data-name="EZDZEF"] img {
       filter: brightness(0);
       opacity: 0.55;
     }
 
     html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"]:hover img,
-    html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"]:focus-visible img {
+    html[data-theme="light"] .partner-tile[data-name="Tarantino Cafe"]:focus-visible img,
+    html[data-theme="light"] .partner-tile[data-name="EZDZEF"]:focus-visible img,
+    html[data-theme="light"] .partner-tile[data-name="EZDZEF"]:hover img {
       filter: brightness(0);
       opacity: 1;
     }
 
-    html[data-theme="light"] #unitPanel[data-active-partner="Tarantino Cafe"] .unit-panel-logo img {
+    html[data-theme="light"] #unitPanel[data-active-partner="Tarantino Cafe"] .unit-panel-logo img,
+    html[data-theme="light"] #unitPanel[data-active-partner="EZDZEF"] .unit-panel-logo img {
       filter: brightness(0);
     }
 
@@ -1224,11 +1228,12 @@
     }
 
     .unit-card {
-      flex: 1 1 calc(25% - 16.5px);
-      max-width: calc(25% - 16.5px);
+      flex: 1 1 calc(30% - 16.5px);
+      max-width: calc(30% - 16.5px);
+      height: auto;
       border: 1px solid rgba(17, 32, 51, 0.08);
       border-radius: var(--radius);
-      padding: 25px 20px;
+      padding: 20px 19px;
       background: var(--surface2);
       opacity: 0;
       transform: translateY(24px);
@@ -1273,6 +1278,7 @@
     .unit-card h3 {
       font-size: 18px;
       margin-top: 6px;
+      text-align: center;
       color: var(--text-on-dark);
     }
 
@@ -1280,6 +1286,7 @@
       font-size: 14px;
       color: #6B8499;
       margin-top: 10px;
+      text-align: center;
     }
 
     /* ===================== ACTIVITIES: YEAR TABS ===================== */
@@ -1371,7 +1378,7 @@
       height: 100%;
       height: 100dvh;
       max-height: 100dvh;
-      width: min(420px, 100%);
+      width: min(550px, 100%);
       background: var(--surface);
       border-left: 1px solid var(--line);
       box-shadow: -20px 0 50px rgba(0, 0, 0, 0.25);
@@ -1427,10 +1434,15 @@
 
 
     .unit-panel-logo img {
-      width: 50%;
+      width: 35%;
       height: auto;
-      padding-bottom: 20px;
+      padding-bottom: 10px;
       object-fit: contain;
+    }
+
+   .unit-panel-logo img.wie-panel-logo {
+      width: 40%;
+      height: auto;
     }
 
     .unit-panel-tag {
@@ -1450,19 +1462,83 @@
       margin: 0 0 16px;
     }
 
+    .unit-panel-body .unit-panel-description {
+      color: var(--text);
+      font-size: 14.5px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
     .unit-panel-body .unit-panel-summary {
       color: var(--text-muted);
       font-size: 15px;
+      font-style: italic;
       line-height: 1.6;
-      margin-bottom: 18px;
+      margin-bottom: 24px;
     }
 
-    .unit-panel-body .unit-panel-details {
-      color: var(--text);
-      font-size: 15px;
-      line-height: 1.7;
+    .unit-panel-stats {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
       margin-bottom: 32px;
-      white-space: pre-line;
+    }
+
+    .unit-panel-stat {
+      text-align: center;
+      padding: 16px 6px;
+      border-right: 1px solid var(--line);
+    }
+
+    .unit-panel-stat:last-child {
+      border-right: none;
+    }
+
+    .unit-panel-stat .num {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 22px;
+      color: var(--unit-color, var(--ieee-blue-light));
+    }
+
+    .unit-panel-stat .label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .unit-panel-specialization {
+      display: none;
+      margin-bottom: 32px;
+    }
+
+    .unit-panel-specialization h4 {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    .unit-panel-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .unit-panel-tag-item {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--unit-color, var(--ieee-blue)) 12%, transparent);
+      color: var(white, var(--ieee-blue));
+      border: 1px solid color-mix(in srgb, var(--unit-color, var(--ieee-blue)) 30%, transparent);
     }
 
     .unit-panel-visit {
@@ -3317,22 +3393,24 @@
         </div>
         <div class="units-grid">
           <div class="unit-card reveal" style="--unit-color:#F5A623;" data-website="https://example.com/cs-chapter"
-            data-details="">
+            data-founded="2024" data-board="5" data-members="40"
+            data-description="Empowering future computing professionals through technical workshops, innovation, research, and industry-driven opportunities in computer science and engineering."
+            data-specializations="Software Engineering, Artificial Intelligence, Competitive Programming, Cybersecurity">
             <div class="unit-logo-img"><img id="cs-logo" src="Logos/ieee-cs-white.svg"
-                alt="Computer Society Chapter Logo" style="width: 200px; height: auto; padding: 25px;"
+                alt="Computer Society Chapter Logo" style="width: 235px; height: auto; padding: 18px;"
                 onerror="this.style.display='none';"></div>
-            <span class="tag">CS</span>
             <h3>Computer Society Chapter</h3>
-            <p>Software engineering, AI, and competitive programming, through projects, talks, and contests.</p>
+            <p style="font-style: italic;">"The best way to predict the future is to invent it."</p>
           </div>
 
           <div class="unit-card reveal" style="--unit-color:#8A1870;" data-website="https://example.com/wie-chapter"
-            data-details="">
+            data-founded="2026" data-board="5" data-members="25"
+            data-description="Inspiring and empowering women in engineering and technology by fostering leadership, professional growth, diversity, and an inclusive STEM community."
+            data-specializations="Mentorship, Networking, Talks &amp; Workshops, STEM">
             <div class="unit-logo-img"><img id="wie-logo" src="Logos/ieee-wie-white.png" alt="Women in Engineering Logo"
                 style="width: 155px; height: auto; padding: 0px;" onerror="this.style.display='none';"></div>
-            <span class="tag">WIE</span>
-            <h3>Women in Engineering</h3>
-            <p>Supporting and empowering women in engineering through mentorship, talks, and networking.</p>
+            <h3>Women in Engineering Affinity Group</h3>
+            <p style="font-style: italic;">"Breaking Barriers Building the Future."</p>
           </div>
         </div>
       </div>
@@ -3344,11 +3422,31 @@
       <button class="unit-panel-close" id="unitPanelClose" aria-label="Close">&times;</button>
       <div class="unit-panel-body">
         <div class="unit-panel-logo" id="unitPanelLogo"></div>
-        <hr class="partner-panel-divider">
-        <span class="unit-panel-tag" id="unitPanelTag"></span>
-        <h3 id="unitPanelTitle"></h3>
         <p class="unit-panel-summary" id="unitPanelSummary"></p>
-        <p class="unit-panel-details" id="unitPanelDetails"></p>
+        <hr class="partner-panel-divider">
+        <h3 id="unitPanelTitle"></h3>
+        <p class="unit-panel-description" id="unitPanelDescription"></p>
+
+        <div class="unit-panel-stats" id="unitPanelStats">
+          <div class="unit-panel-stat">
+            <span class="num" id="unitPanelFounded"></span>
+            <span class="label">Founded</span>
+          </div>
+          <div class="unit-panel-stat">
+            <span class="num" id="unitPanelBoard"></span>
+            <span class="label">Board Members</span>
+          </div>
+          <div class="unit-panel-stat">
+            <span class="num" id="unitPanelMembers"></span>
+            <span class="label">Members</span>
+          </div>
+        </div>
+
+        <div class="unit-panel-specialization" id="unitPanelSpecialization">
+          <h4>Specialization</h4>
+          <div class="unit-panel-tags" id="unitPanelTags"></div>
+        </div>
+
         <a class="unit-panel-visit" id="unitPanelVisit" href="#" target="_blank" rel="noopener">
           Visit website →
         </a>
@@ -3880,30 +3978,53 @@
       const panel = document.getElementById('unitPanel');
       const panelTop = document.getElementById('unitPanelTop');
       const panelLogo = document.getElementById('unitPanelLogo');
-      const panelTag = document.getElementById('unitPanelTag');
       const panelTitle = document.getElementById('unitPanelTitle');
       const panelSummary = document.getElementById('unitPanelSummary');
-      const panelDetails = document.getElementById('unitPanelDetails');
+      const panelDescription = document.getElementById('unitPanelDescription');
+      const panelStats = document.getElementById('unitPanelStats');
+      const panelFounded = document.getElementById('unitPanelFounded');
+      const panelBoard = document.getElementById('unitPanelBoard');
+      const panelMembers = document.getElementById('unitPanelMembers');
+      const panelSpecialization = document.getElementById('unitPanelSpecialization');
+      const panelTags = document.getElementById('unitPanelTags');
       const panelVisit = document.getElementById('unitPanelVisit');
       const closeBtn = document.getElementById('unitPanelClose');
 
       function openPanel(card) {
         const color = card.style.getPropertyValue('--unit-color') || 'var(--ieee-blue)';
         const logoImg = card.querySelector('.unit-logo-img img');
-        const tag = card.querySelector('.tag');
         const title = card.querySelector('h3');
-        const summary = card.querySelector('p');
+        const slogan = card.querySelector('p');
         const website = card.dataset.website || '#';
-        const details = card.dataset.details || '';
+        const description = card.dataset.description || '';
+        const founded = card.dataset.founded || '';
+        const board = card.dataset.board || '';
+        const members = card.dataset.members || '';
+        const specializations = (card.dataset.specializations || '')
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
 
         panel.style.setProperty('--unit-color', color);
         panel.removeAttribute('data-active-partner');
         panelTop.style.background = color;
-        panelLogo.innerHTML = logoImg ? `<img src="${logoImg.src}" alt="${logoImg.alt}">` : '';
-        panelTag.textContent = tag ? tag.textContent : '';
+        panelLogo.innerHTML = logoImg
+          ? `<img src="${logoImg.src}" alt="${logoImg.alt}" class="${logoImg.id === 'wie-logo' ? 'wie-panel-logo' : ''}">`
+          : '';
         panelTitle.textContent = title ? title.textContent : '';
-        panelSummary.textContent = summary ? summary.textContent : '';
-        panelDetails.textContent = details;
+        panelDescription.textContent = description;
+        panelSummary.textContent = slogan ? slogan.textContent : '';
+
+        panelFounded.textContent = founded || '—';
+        panelBoard.textContent = board || '—';
+        panelMembers.textContent = members || '—';
+        panelStats.style.display = 'grid';
+
+        panelTags.innerHTML = specializations
+          .map(topic => `<span class="unit-panel-tag-item">${topic}</span>`)
+          .join('');
+        panelSpecialization.style.display = specializations.length ? 'block' : 'none';
+
         panelVisit.href = website;
         panelVisit.style.display = card.dataset.website ? 'inline-flex' : 'none';
 
@@ -3942,10 +4063,11 @@
           panel.dataset.activePartner = name;
           panelTop.style.background = color;
           panelLogo.innerHTML = logoImg ? `<img src="${logoImg.src}" alt="${logoImg.alt}">` : '';
-          panelTag.textContent = '';
           panelTitle.textContent = name;
-          panelSummary.textContent = description;
-          panelDetails.textContent = '';
+          panelDescription.textContent = description;
+          panelSummary.textContent = "";
+          panelStats.style.display = 'none';
+          panelSpecialization.style.display = 'none';
           panelVisit.href = website;
           panelVisit.style.display = website ? 'inline-flex' : 'none';
 
@@ -4049,6 +4171,7 @@
         { src: 'gallery/IMG_9892.jpg', alt: '5' },
         { src: 'gallery/WhatsApp_Image_2026-07-08_at_4.18.08_PM_-_Mohamed_Ali.jpg', alt: '7' },
         { src: 'gallery/WhatsApp_Image_2026-07-08_at_4.18.09_PM_-_Mohamed_Ali.jpg', alt: '8' },
+        { src: 'gallery/IMG_5942.jpg', alt: '9' },
         { src: 'gallery/DA777D8D-4BC4-4CCE-BE16-AB2E25436C77_-_yosr.mp4', alt: 'dsdf', type: 'video' },
         { src: 'gallery/IMG_2928_-_yosr.mp4', alt: 'ayhem', type: 'video' },
       ];
