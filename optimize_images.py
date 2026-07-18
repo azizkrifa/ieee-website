@@ -84,20 +84,31 @@ def optimize_video(src_path: Path, out_root: Path, in_root: Path):
     if shutil.which("ffmpeg") is None:
         print("FFmpeg not found. Skipping video:", src_path)
         return
-
     cmd = [
         "ffmpeg",
         "-y",
         "-i", str(src_path),
+
+        # Resize if larger than 1920px wide (keeps aspect ratio)
+        "-vf", "scale='min(1920,iw)':-2",
+
+        # Video
         "-c:v", "libx264",
-        "-crf", "28",          # 23 = higher quality, 28 = smaller files
-        "-preset", "slow",
+        "-preset", "veryslow",      # Better compression
+        "-crf", "30",               # 28-32 for websites
+        "-profile:v", "high",
+        "-level", "4.1",
+        "-pix_fmt", "yuv420p",
+
+        # Audio
         "-c:a", "aac",
-        "-b:a", "128k",
+        "-b:a", "96k",
+
+        # Web optimization
         "-movflags", "+faststart",
+
         str(out_file)
     ]
-
     subprocess.run(
         cmd,
         stdout=subprocess.DEVNULL,
