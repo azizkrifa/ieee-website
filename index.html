@@ -1440,9 +1440,10 @@
       object-fit: contain;
     }
 
-   .unit-panel-logo img.wie-panel-logo {
-      width: 40%;
+    .unit-panel-logo img.wie-panel-logo {
+      width: 35%;
       height: auto;
+      margin-top: -15px;
     }
 
     .unit-panel-tag {
@@ -1567,6 +1568,75 @@
     @media (max-width: 560px) {
       .unit-panel {
         width: 100%;
+      }
+
+      .unit-panel-body {
+        padding: 48px 22px calc(32px + env(safe-area-inset-bottom));
+      }
+
+      .unit-panel-logo img {
+        width: 50%;
+        height: auto;
+      }
+
+      .unit-panel-wie-logo img {
+        width: 80%;
+        height: auto;
+      }
+
+      .unit-panel-body h3 {
+        font-size: 22px;
+      }
+
+      .unit-panel-stats {
+        margin-bottom: 24px;
+      }
+
+      .unit-panel-stat {
+        padding: 12px 4px;
+      }
+
+      .unit-panel-stat .num {
+        font-size: 19px;
+      }
+
+      .unit-panel-stat .label {
+        font-size: 10px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .unit-panel-body {
+        padding: 40px 16px calc(28px + env(safe-area-inset-bottom));
+      }
+
+      .unit-panel-stat {
+        padding: 10px 3px;
+      }
+
+      .unit-panel-stat .num {
+        font-size: 17px;
+      }
+
+      .unit-panel-stat .label {
+        font-size: 9.5px;
+        letter-spacing: 0.02em;
+      }
+
+      .unit-panel-tag-item {
+        font-size: 11.5px;
+        padding: 6px 12px;
+      }
+
+      .unit-panel-visit {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .unit-panel-close {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
       }
     }
 
@@ -2440,23 +2510,32 @@
         padding: 72px 0;
       }
 
-      /* hero */
-      .hero h1 {
-        font-size: clamp(32px, 8vw, 48px);
-      }
 
       .hero p.lede {
-        font-size: 15px;
+        margin-left: auto;
+        margin-right: auto;
       }
 
       .hero-actions {
-        flex-direction: column;
-        gap: 12px;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .hero-side {
+        width: 80%;
+        margin-left: 7px;
+        gap: 40px;
+        justify-items: center;
       }
 
       .hero-actions .btn {
+        width: 70%;
+        font-size: 15px;
+        margin-left: 10px;
         justify-content: center;
+        align-items: center;
       }
+
 
       /* stat grid: wrap to 2×2 on small screens */
       .stat-grid {
@@ -2510,26 +2589,6 @@
         flex-direction: column;
         gap: 6px;
         font-size: 11.5px;
-      }
-    }
-
-    /* ── small phone (up to 399px) ── */
-    @media (max-width: 399px) {
-      .team-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .unit-card {
-        flex-basis: 100%;
-        max-width: 100%;
-      }
-
-      .units-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .hero-side {
-        padding: 20px 16px;
       }
     }
 
@@ -3671,7 +3730,6 @@
         <div class="section-head reveal">
           <span class="eyebrow">Moments from the branch</span>
           <h2>Gallery</h2>
-          <p class="gallery-tagline">Making memories since 2024</p>
           <p>Highlights from our workshops, socials, and events.</p>
         </div>
       </div>
