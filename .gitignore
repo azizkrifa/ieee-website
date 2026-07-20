@@ -30,3 +30,5 @@ out/
 Thumbs.db
 
 *.db
+
+__pycache__
