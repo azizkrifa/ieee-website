@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Applications — IEEE FSM Admin</title>
+    <style>
+        body {
+            font-family: -apple-system, Arial, sans-serif;
+            background: #0D1117;
+            color: #E6EDF3;
+            margin: 0;
+            padding: 32px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        p.meta {
+            color: #7D94A8;
+            font-size: 13px;
+            margin-top: 0 0 20px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 13px;
+        }
+
+        th,
+        td {
+            border: 1px solid #263141;
+            padding: 8px 10px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #141922;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:nth-child(even) {
+            background: #141922;
+        }
+
+        a.export {
+            color: #60B8EE;
+            font-size: 13px;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th.sortable:hover {
+            color: #60B8EE;
+        }
+
+        .sort-arrow {
+            font-size: 10px;
+            opacity: 0.75;
+            margin-left: 4px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-top: -20px;
+            margin-bottom: 20px;
+            justify-content: flex-end;
+        }
+
+        .toolbar-btn {
+            background: #20262f;
+            color: #5b6572;
+            border: 1px solid #2a313d;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: not-allowed;
+            font-size: 13px;
+            margin-top: -30px;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .toolbar-btn.active {
+            background: #2d3644;
+            color: #E6EDF3;
+            cursor: pointer;
+        }
+
+        .toolbar-btn.active:hover {
+            background: #3a4557;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: #141922;
+            border: 1px solid #263141;
+            border-radius: 10px;
+            padding: 24px;
+            width: 420px;
+            max-width: 90vw;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            font-size: 16px;
+        }
+
+        .modal-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .modal-grid label {
+            display: flex;
+            flex-direction: column;
+            font-size: 12px;
+            color: #7D94A8;
+            gap: 4px;
+        }
+
+        .modal-grid input,
+        .modal-grid select {
+            background: #0D1117;
+            border: 1px solid #333;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .modal-grid input.invalid,
+        .modal-grid select.invalid {
+            border: 1px solid #ff6b6b !important;
+            box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.15);
+        }
+
+        .modal-error {
+            color: #ff6b6b;
+            font-size: 12px;
+            min-height: 16px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        tr.selected-row {
+            background: #23364a !important;
+        }
+
+        #applicationsBody tr {
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 id="page-title">IEEE FSM — Applications (__COUNT__)</h1>
+    <p class="meta"><a class="export" href="/admin/applications.csv">Download CSV</a></p>
+    <input id="searchInput" type="text" placeholder="Search by name, email, phone, ID..." style="
+        width:30%;
+        padding:10px;
+        margin:15px 0;
+        border-radius:8px;
+        border:1px solid #333;
+        background:#141922;
+        color:white;
+    ">
+
+    <div class="toolbar">
+        <button id="editBtn" class="toolbar-btn" disabled onclick="openEditModal()">✎ Edit</button>
+        <button id="deleteBtn" class="toolbar-btn" disabled onclick="deleteSelected()">🗑 Delete Selected</button>
+
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Level</th>
+                <th>Field</th>
+                <th class="sortable" onclick="sortTable('birthday')">Birthday <span class="sort-arrow"
+                        id="arrow-birthday"></span></th>
+                <th>ID</th>
+                <th class="sortable" onclick="sortTable('interview')">Interview <span class="sort-arrow"
+                        id="arrow-interview"></span></th>
+                <th>IP</th>
+                <th class="sortable" onclick="sortTable('submitted')">Submitted <span class="sort-arrow"
+                        id="arrow-submitted"></span></th>
+            </tr>
+        </thead>
+        <tbody id="applicationsBody">__ROWS__</tbody>
+    </table>
+
+    <div id="editModal" class="modal-overlay">
+        <div class="modal">
+            <h2>Edit Application</h2>
+            <div class="modal-grid">
+                <label>Full name <input id="edit-fullName" type="text"></label>
+                <label>Phone <input id="edit-phone" type="text"></label>
+                <label>Email <input id="edit-email" type="email"></label>
+                <label>Study level
+                    <select id="edit-studyLevel">
+                        <option>L1</option>
+                        <option>L2</option>
+                        <option>L3</option>
+                        <option>M1</option>
+                        <option>M2</option>
+                        <option>Engineering cycle</option>
+                        <option>PhD</option>
+                        <option>Other</option>
+                    </select>
+                </label>
+                <label>Study field <input id="edit-studyField" type="text"></label>
+                <label>Birthday <input id="edit-birthday" type="date"></label>
+                <label>ID number <input id="edit-idNumber" type="text"></label>
+                <label>Interview date <input id="edit-interviewDate" type="text" placeholder="YYYY-MM-DD"></label>
+                <label>Interview time <input id="edit-interviewTime" type="text" placeholder="HH:MM"></label>
+            </div>
+            <p id="edit-error" class="modal-error"></p>
+            <div class="modal-actions">
+                <button class="toolbar-btn active" onclick="closeEditModal()">Cancel</button>
+                <button id="saveEditBtn" class="toolbar-btn active" onclick="saveEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById("searchInput");
+
+        let selectedIds = new Set();
+        let lastClickedId = null;
+
+        function handleRowClick(event, id) {
+            const rows = Array.from(document.querySelectorAll("#applicationsBody tr"));
+            const ids = rows.map(r => r.dataset.id);
+
+            if (event.shiftKey && lastClickedId !== null && ids.includes(lastClickedId)) {
+                const startIdx = ids.indexOf(lastClickedId);
+                const endIdx = ids.indexOf(id);
+                const [from, to] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+                selectedIds = new Set(ids.slice(from, to + 1));
+            } else if (event.ctrlKey || event.metaKey) {
+                if (selectedIds.has(id)) {
+                    selectedIds.delete(id);
+                } else {
+                    selectedIds.add(id);
+                }
+                lastClickedId = id;
+            } else {
+                // plain click: select just this row (click it again to deselect)
+                if (selectedIds.size === 1 && selectedIds.has(id)) {
+                    selectedIds.clear();
+                } else {
+                    selectedIds = new Set([id]);
+                }
+                lastClickedId = id;
+            }
+
+            applySelectionStyles();
+            updateToolbar();
+        }
+
+        function applySelectionStyles() {
+            document.querySelectorAll("#applicationsBody tr").forEach(row => {
+                row.classList.toggle("selected-row", selectedIds.has(row.dataset.id));
+            });
+        }
+
+        function getSelectedIds() {
+            return Array.from(selectedIds);
+        }
+
+        function updateToolbar() {
+            const selected = getSelectedIds();
+            const editBtn = document.getElementById("editBtn");
+            const deleteBtn = document.getElementById("deleteBtn");
+
+            if (selected.length >= 1) {
+                deleteBtn.disabled = false;
+                deleteBtn.classList.add("active");
+            } else {
+                deleteBtn.disabled = true;
+                deleteBtn.classList.remove("active");
+            }
+
+            if (selected.length === 1) {
+                editBtn.disabled = false;
+                editBtn.classList.add("active");
+            } else {
+                editBtn.disabled = true;
+                editBtn.classList.remove("active");
+            }
+        }
+
+        async function deleteSelected() {
+            const ids = getSelectedIds();
+            if (ids.length === 0) return;
+            if (!confirm(`Delete ${ids.length} application(s)?`)) return;
+
+            for (const id of ids) {
+                await fetch("/admin/applications/" + id, {
+                    method: "DELETE",
+                    headers: { "Authorization": "Basic " + btoa("admin:admin") }
+                });
+            }
+
+            location.reload();
+        }
+
+        // ---------- edit modal ----------
+
+        let editingId = null;
+
+        function openEditModal() {
+            const ids = getSelectedIds();
+            if (ids.length !== 1) return;
+            editingId = ids[0];
+
+            const row = document.querySelector(`tr[data-id="${editingId}"]`);
+            const cells = row.querySelectorAll("td");
+            // [0]=id [1]=name [2]=phone [3]=email [4]=level [5]=field
+            // [6]=birthday [7]=idNumber [8]=interview [9]=ip [10]=submitted
+            document.getElementById("edit-fullName").value = cells[1].textContent;
+            document.getElementById("edit-phone").value = cells[2].textContent;
+            document.getElementById("edit-email").value = cells[3].textContent;
+            document.getElementById("edit-studyLevel").value = cells[4].textContent;
+            document.getElementById("edit-studyField").value = cells[5].textContent;
+            document.getElementById("edit-birthday").value = cells[6].textContent;
+            document.getElementById("edit-idNumber").value = cells[7].textContent;
+
+            const [interviewDate, interviewTime] = cells[8].textContent.trim().split(" ");
+            document.getElementById("edit-interviewDate").value = interviewDate || "";
+            document.getElementById("edit-interviewTime").value = interviewTime || "";
+
+            document.getElementById("edit-error").textContent = "";
+            document.getElementById("editModal").classList.add("open");
+        }
+
+        function closeEditModal() {
+            document.getElementById("editModal").classList.remove("open");
+            editingId = null;
+        }
+
+        async function saveEdit() {
+            if (!editingId) return;
+
+            const btn = document.getElementById("saveEditBtn");
+
+            document
+                .querySelectorAll("#editModal .invalid")
+                .forEach(el => el.classList.remove("invalid"));
+
+            document.getElementById("edit-error").textContent = "";
+
+            // Prevent double-clicks
+            btn.disabled = true;
+            btn.classList.remove("active");
+            btn.textContent = "Saving...";
+
+            try {
+                const payload = {
+                    fullName: document.getElementById("edit-fullName").value,
+                    phone: document.getElementById("edit-phone").value,
+                    email: document.getElementById("edit-email").value,
+                    studyLevel: document.getElementById("edit-studyLevel").value,
+                    studyField: document.getElementById("edit-studyField").value,
+                    birthday: document.getElementById("edit-birthday").value,
+                    idNumber: document.getElementById("edit-idNumber").value,
+                    interviewDate: document.getElementById("edit-interviewDate").value,
+                    interviewTime: document.getElementById("edit-interviewTime").value,
+                };
+
+                const res = await fetch("/admin/applications/" + editingId, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Basic " + btoa("admin:admin")
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    closeEditModal();
+                    location.reload();
+                } else {
+                    const data = await res.json().catch(() => ({}));
+
+                    document.getElementById("edit-error").textContent =
+                        data.error || "Please fix the highlighted fields.";
+
+                    // Highlight invalid fields returned by the server
+                    // Expected format:
+                    // { error: "Please fix the highlighted fields.",
+                    //   fields: ["email", "phone"] }
+
+                    const fieldMap = {
+                        fullName: "edit-fullName",
+                        phone: "edit-phone",
+                        email: "edit-email",
+                        studyLevel: "edit-studyLevel",
+                        studyField: "edit-studyField",
+                        birthday: "edit-birthday",
+                        idNumber: "edit-idNumber",
+                        interviewDate: "edit-interviewDate",
+                        interviewTime: "edit-interviewTime"
+                    };
+
+                    if (data.fields && typeof data.fields === "object") {
+                        Object.keys(data.fields).forEach(name => {
+                            if (name === "interview") {
+                                // server reports date/time as one combined "interview" error
+                                ["interviewDate", "interviewTime"].forEach(key => {
+                                    const el = document.getElementById(fieldMap[key]);
+                                    if (el) el.classList.add("invalid");
+                                });
+                                return;
+                            }
+                            const el = document.getElementById(fieldMap[name]);
+                            if (el) el.classList.add("invalid");
+                        });
+                    }
+
+                    btn.disabled = false;
+                    btn.classList.add("active");
+                    btn.textContent = "Save";
+                }
+            } catch (err) {
+                document.getElementById("edit-error").textContent =
+                    "Network error. Please try again.";
+
+                btn.disabled = false;
+                btn.classList.add("active");
+                btn.textContent = "Save";
+            }
+        }
+
+        // ---------- sorting ----------
+
+        let currentSortKey = null;
+        let currentSortOrder = 1;
+
+        function sortTable(key) {
+            if (currentSortKey === key) {
+                currentSortOrder *= -1;
+            } else {
+                currentSortKey = key;
+                currentSortOrder = 1;
+            }
+            applySort();
+        }
+
+        function applySort() {
+            ["birthday", "interview", "submitted"].forEach(k => {
+                const arrow = document.getElementById("arrow-" + k);
+                if (!arrow) return;
+                arrow.textContent = (k === currentSortKey)
+                    ? (currentSortOrder === 1 ? "▲" : "▼")
+                    : "";
+            });
+
+            if (!currentSortKey) return;
+
+            const tbody = document.getElementById("applicationsBody");
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+
+            rows.sort((rowA, rowB) => {
+                const valA = rowA.dataset[currentSortKey] || "";
+                const valB = rowB.dataset[currentSortKey] || "";
+                return valA.localeCompare(valB) * currentSortOrder;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // ---------- auto refresh ----------
+
+        async function refreshApplications() {
+
+            const res = await fetch("/admin/applications/json", {
+                headers: {
+                    "Authorization": "Basic " + btoa("admin:admin")
+                }
+            });
+
+            const data = await res.json();
+
+            // remember what was checked before we rebuild the table
+            const selectedIds = new Set(getSelectedIds());
+
+            const tbody = document.getElementById("applicationsBody");
+
+            document.getElementById("page-title").textContent =
+                `IEEE FSM — Applications (${data.length})`;
+
+            tbody.innerHTML = data.map(a => `
+        <tr data-id="${a.id}" data-birthday="${a.birthday}" data-interview="${a.interview_date} ${a.interview_time}" data-submitted="${a.created_at}" onclick="handleRowClick(event, '${a.id}')">
+            <td>${a.id}</td>
+            <td>${a.full_name}</td>
+            <td>${a.phone}</td>
+            <td>${a.email}</td>
+            <td>${a.study_level}</td>
+            <td>${a.study_field}</td>
+            <td>${a.birthday}</td>
+            <td>${a.id_number}</td>
+            <td>${a.interview_date} ${a.interview_time}</td>
+            <td>${a.ip_address}</td>
+            <td>${a.created_at}</td>
+        </tr>
+    `).join("");
+
+            // restore selection highlighting (drops any ids that no longer exist, e.g. deleted elsewhere)
+            for (const id of Array.from(selectedIds)) {
+                if (!document.querySelector(`tr[data-id="${id}"]`)) selectedIds.delete(id);
+            }
+            applySelectionStyles();
+
+            // Reapply current filter
+            const value = searchInput.value.toLowerCase();
+
+            document.querySelectorAll("#applicationsBody tr").forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(value)
+                    ? ""
+                    : "none";
+            });
+
+            // Reapply current sort and toolbar state (based on restored selection)
+            applySort();
+            updateToolbar();
+        }
+
+        setInterval(refreshApplications, 5000);
+
+    </script>
+
+</body>
+
+</html>

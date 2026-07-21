@@ -514,190 +514,65 @@ def delete_application(app_id):
 
     return jsonify({"ok": True})
 
+
+@app.route("/admin/applications/<int:app_id>", methods=["PUT"])
+@requires_admin_auth
+def update_application(app_id):
+    db = get_db()
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid request."}), 400
+
+    errors, cleaned = validate_payload(data)
+    if errors:
+        return jsonify({"error": "Please fix the highlighted fields.", "fields": errors}), 400
+
+    existing = db.execute("SELECT id FROM applications WHERE id = ?", (app_id,)).fetchone()
+    if not existing:
+        return jsonify({"error": "Application not found"}), 404
+
+    # duplicate guard, excluding this record itself
+    dup = db.execute(
+        "SELECT id FROM applications WHERE (email = ? OR id_number = ?) AND id != ?",
+        (cleaned["email"], cleaned["id_number"], app_id),
+    ).fetchone()
+    if dup:
+        return jsonify({"error": "An application with this email or ID number already exists."}), 409
+
+    try:
+        db.execute(
+            """UPDATE applications SET
+                full_name = ?, phone = ?, email = ?, study_level = ?, study_field = ?,
+                birthday = ?, id_number = ?, interview_date = ?, interview_time = ?
+               WHERE id = ?""",
+            (
+                cleaned["full_name"], cleaned["phone"], cleaned["email"],
+                cleaned["study_level"], cleaned["study_field"], cleaned["birthday"],
+                cleaned["id_number"], cleaned["interview_date"], cleaned["interview_time"],
+                app_id,
+            ),
+        )
+        db.commit()
+
+        send_interview_email(cleaned["full_name"],cleaned["email"],cleaned["interview_date"],cleaned["interview_time"])
+
+    except sqlite3.IntegrityError as e:
+        db.rollback()
+        msg = str(e)
+        if "interview_date" in msg or "interview_time" in msg:
+            return jsonify({"error": "That interview slot is already taken. Please pick another one."}), 409
+        return jsonify({"error": "An application with this email or ID number already exists."}), 409
+
+    return jsonify({"ok": True})
+
 # ===================== ADMIN =====================
 
-ADMIN_PAGE_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Applications — IEEE FSM Admin</title>
-<style>
-  body { font-family: -apple-system, Arial, sans-serif; background:#0D1117; color:#E6EDF3; margin:0; padding:32px; }
-  h1 { font-size:20px; margin-bottom:4px; }
-  p.meta { color:#7D94A8; font-size:13px; margin-top:0 0 20px; }
-  table { border-collapse: collapse; width:100%; font-size:13px; }
-  th, td { border:1px solid #263141; padding:8px 10px; text-align:left; white-space:nowrap; }
-  th { background:#141922; position:sticky; top:0; }
-  tr:nth-child(even) { background:#141922; }
-  a.export { color:#60B8EE; font-size:13px; }
-  .delete-btn{ background:#d32f2f;
-    color:white;
-    border:none;
-    padding:6px 12px;
-    border-radius:6px;
-    cursor:pointer;
-}
+ADMIN_PAGE_PATH = os.path.join(BASE_DIR, "admin_applications.html")
 
-.delete-btn:hover{
-background:#b71c1c;
-  }
 
-  th.sortable { cursor: pointer; user-select: none; }
-  th.sortable:hover { color: #60B8EE; }
-  .sort-arrow { font-size: 10px; opacity: 0.75; margin-left: 4px; }
-
-</style></head><body>
-<h1 id="page-title">IEEE FSM — Applications (__COUNT__)</h1>
-<p class="meta"><a class="export" href="/admin/applications.csv">Download CSV</a></p>
-<input id="searchInput" type="text" placeholder="Search by name, email, phone, ID..."
-    style="
-        width:30%;
-        padding:10px;
-        margin:15px 0;
-        border-radius:8px;
-        border:1px solid #333;
-        background:#141922;
-        color:white;
-    ">
-<table><thead>
-<tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Level</th><th>Field</th>
-<th class="sortable" onclick="sortTable('birthday')">Birthday <span class="sort-arrow" id="arrow-birthday"></span></th>
-<th>ID</th>
-<th class="sortable" onclick="sortTable('interview')">Interview <span class="sort-arrow" id="arrow-interview"></span></th>
-<th>IP</th>
-<th class="sortable" onclick="sortTable('submitted')">Submitted <span class="sort-arrow" id="arrow-submitted"></span></th>
-<th>Actions</th></tr></tr></thead><tbody id="applicationsBody">__ROWS__</tbody>
-</table>
-
-<script>
-const searchInput = document.getElementById("searchInput");
-
-let currentSortKey = null;
-let currentSortOrder = 1; // 1 = ascending, -1 = descending
-
-function sortTable(key) {
-    if (currentSortKey === key) {
-        currentSortOrder *= -1;
-    } else {
-        currentSortKey = key;
-        currentSortOrder = 1;
-    }
-    applySort();
-}
-
-function applySort() {
-    // Update arrow indicators
-    ["birthday", "interview", "submitted"].forEach(k => {
-        const arrow = document.getElementById("arrow-" + k);
-        if (!arrow) return;
-        arrow.textContent = (k === currentSortKey)
-            ? (currentSortOrder === 1 ? "▲" : "▼")
-            : "";
-    });
-
-    if (!currentSortKey) return;
-
-    const tbody = document.getElementById("applicationsBody");
-    const rows = Array.from(tbody.querySelectorAll("tr"));
-
-    rows.sort((rowA, rowB) => {
-        const valA = rowA.dataset[currentSortKey] || "";
-        const valB = rowB.dataset[currentSortKey] || "";
-        return valA.localeCompare(valB) * currentSortOrder;
-    });
-
-    rows.forEach(row => tbody.appendChild(row));
-}
-
-searchInput.addEventListener("keyup", function () {
-    const value = this.value.toLowerCase();
-
-    document.querySelectorAll("#applicationsBody tr").forEach(row => {
-        row.style.display = row.innerText.toLowerCase().includes(value)
-            ? ""
-            : "none";
-    });
-});
-
-async function deleteApplication(id){
-
-    if(!confirm("Delete this application?"))
-        return;
-
-    const res = await fetch("/admin/applications/" + id,{
-        method:"DELETE",
-        headers:{
-            "Authorization":"Basic " + btoa("admin:admin")
-        }
-    });
-
-    if(res.ok){
-
-        location.reload();
-
-    }else{
-
-        alert("Unable to delete application.");
-
-    }
-
-}
-
-async function refreshApplications() {
-
-    const res = await fetch("/admin/applications/json", {
-        headers: {
-            "Authorization": "Basic " + btoa("admin:admin")
-        }
-    });
-
-    const data = await res.json();
-
-    const tbody = document.getElementById("applicationsBody");
-
-    document.getElementById("page-title").textContent =
-        `IEEE FSM — Applications (${data.length})`;
-
-    tbody.innerHTML = data.map(a => `
-        <tr data-birthday="${a.birthday}" data-interview="${a.interview_date} ${a.interview_time}" data-submitted="${a.created_at}">
-            <td>${a.id}</td>
-            <td>${a.full_name}</td>
-            <td>${a.phone}</td>
-            <td>${a.email}</td>
-            <td>${a.study_level}</td>
-            <td>${a.study_field}</td>
-            <td>${a.birthday}</td>
-            <td>${a.id_number}</td>
-            <td>${a.interview_date} ${a.interview_time}</td>
-            <td>${a.ip_address}</td>
-            <td>${a.created_at}</td>
-            <td>
-                <button class="delete-btn"
-                    onclick="deleteApplication(${a.id})">
-                    Delete
-                </button>
-            </td>
-        </tr>
-    `).join("");
-
-    // Reapply current sort
-    applySort();
-
-    // Reapply current filter
-    const value = searchInput.value.toLowerCase();
-
-    document.querySelectorAll("#applicationsBody tr").forEach(row => {
-        row.style.display = row.innerText.toLowerCase().includes(value)
-           ? ""
-           : "none";
-    });
-}
-
-setInterval(refreshApplications, 5000);
-
-</script>
-
-</body>
-</html>
-"""
+def _load_admin_page_template():
+    with open(ADMIN_PAGE_PATH, "r", encoding="utf-8") as f:
+        return f.read()
 
 
 def _fetch_all_applications(db):
@@ -712,25 +587,25 @@ def admin_applications():
     db = get_db()
     apps = _fetch_all_applications(db)
     rows_html = "".join(
-        f"<tr data-birthday=\"{a['birthday']}\" "
+        f"<tr data-id=\"{a['id']}\" "
+        f"data-birthday=\"{a['birthday']}\" "
         f"data-interview=\"{a['interview_date']} {a['interview_time']}\" "
-        f"data-submitted=\"{a['created_at']}\">"
+        f"data-submitted=\"{a['created_at']}\" "
+        f"onclick=\"handleRowClick(event, '{a['id']}')\">"
         f"<td>{a['id']}</td><td>{a['full_name']}</td><td>{a['phone']}</td>"
         f"<td>{a['email']}</td><td>{a['study_level']}</td><td>{a['study_field']}</td>"
         f"<td>{a['birthday']}</td><td>{a['id_number']}</td>"
         f"<td>{a['interview_date']} {a['interview_time']}</td>"
-        f"<td>{a['ip_address']}</td><td>{a['created_at']}</td><td>"
-        f"<button class=\"delete-btn\" onclick=\"deleteApplication({a['id']})\">"
-        f"Delete"
-        f"</button>"
-        f"</td></tr>"
+        f"<td>{a['ip_address']}</td><td>{a['created_at']}</td>"
+        f"</tr>"
         for a in apps
     )
     return (
-        ADMIN_PAGE_TEMPLATE
+        _load_admin_page_template()
         .replace("__COUNT__", str(len(apps)))
         .replace("__ROWS__", rows_html)
     )
+
 @app.route("/admin/applications/json")
 @requires_admin_auth
 def admin_applications_json():
