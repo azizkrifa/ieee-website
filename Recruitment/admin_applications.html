@@ -285,10 +285,8 @@
     <div id="blacklistModal" class="modal-overlay">
         <div class="modal wide">
             <h2>Blacklist</h2>
-            <textarea id="blacklist-textarea" spellcheck="false"
-                placeholder="One IP per line. # starts a comment."></textarea>
-            <p class="modal-hint">One IP per line. "#" starts a comment. Changes apply immediately, no restart needed.
-            </p>
+            <textarea id="blacklist-textarea" spellcheck="false" placeholder="One IP per line. # starts a comment."></textarea>
+            <p class="modal-hint">One IP per line. "#" starts a comment. Changes apply immediately, no restart needed.</p>
             <p id="blacklist-error" class="modal-error"></p>
             <div class="modal-actions">
                 <button class="toolbar-btn active" onclick="closeBlacklistModal()">Cancel</button>
@@ -299,6 +297,17 @@
 
     <script>
         const searchInput = document.getElementById("searchInput");
+
+        function filterTable() {
+            const value = searchInput.value.trim().toLowerCase();
+            document.querySelectorAll("#applicationsBody tr").forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(value)
+                    ? ""
+                    : "none";
+            });
+        }
+
+        searchInput.addEventListener("input", filterTable);
 
         let selectedIds = new Set();
         let lastClickedId = null;
@@ -649,14 +658,8 @@
             }
             applySelectionStyles();
 
-            // Reapply current filter
-            const value = searchInput.value.toLowerCase();
-
-            document.querySelectorAll("#applicationsBody tr").forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(value)
-                    ? ""
-                    : "none";
-            });
+            // Reapply current filter (instant, client-side, no backend involved)
+            filterTable();
 
             // Reapply current sort and toolbar state (based on restored selection)
             applySort();
