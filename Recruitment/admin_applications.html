@@ -169,7 +169,8 @@
             display: flex;
             justify-content: flex-end;
             gap: 10px;
-            margin-top: 14px;
+            margin-top: 35px;
+            margin-bottom: -10px;
         }
 
         tr.selected-row {
@@ -179,11 +180,37 @@
         #applicationsBody tr {
             cursor: pointer;
         }
+
+        .modal.wide {
+            width: 560px;
+        }
+
+        #blacklist-textarea {
+            width: 100%;
+            box-sizing: border-box;
+            height: 320px;
+            background: #0D1117;
+            border: 1px solid #333;
+            color: #E6EDF3;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            resize: vertical;
+            white-space: pre;
+        }
+
+        .modal-hint {
+            color: #7D94A8;
+            font-size: 12px;
+            margin: 8px 0 0;
+        }
     </style>
 </head>
 
 <body>
-    <h1 id="page-title">IEEE FSM — Applications (__COUNT__)</h1>
+    <h1 id="page-title">IEEE FSM SB — Applications (__COUNT__)</h1>
     <p class="meta"><a class="export" href="/admin/applications.csv">Download CSV</a></p>
     <input id="searchInput" type="text" placeholder="Search by name, email, phone, ID..." style="
         width:30%;
@@ -198,7 +225,7 @@
     <div class="toolbar">
         <button id="editBtn" class="toolbar-btn" disabled onclick="openEditModal()">✎ Edit</button>
         <button id="deleteBtn" class="toolbar-btn" disabled onclick="deleteSelected()">🗑 Delete Selected</button>
-
+        <button id="blacklistBtn" class="toolbar-btn active" onclick="openBlacklistModal()">🚫 Blacklist</button>
     </div>
     <table>
         <thead>
@@ -251,6 +278,21 @@
             <div class="modal-actions">
                 <button class="toolbar-btn active" onclick="closeEditModal()">Cancel</button>
                 <button id="saveEditBtn" class="toolbar-btn active" onclick="saveEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="blacklistModal" class="modal-overlay">
+        <div class="modal wide">
+            <h2>Blacklist</h2>
+            <textarea id="blacklist-textarea" spellcheck="false"
+                placeholder="One IP per line. # starts a comment."></textarea>
+            <p class="modal-hint">One IP per line. "#" starts a comment. Changes apply immediately, no restart needed.
+            </p>
+            <p id="blacklist-error" class="modal-error"></p>
+            <div class="modal-actions">
+                <button class="toolbar-btn active" onclick="closeBlacklistModal()">Cancel</button>
+                <button id="saveBlacklistBtn" class="toolbar-btn active" onclick="saveBlacklist()">Save</button>
             </div>
         </div>
     </div>
@@ -459,6 +501,68 @@
                 document.getElementById("edit-error").textContent =
                     "Network error. Please try again.";
 
+                btn.disabled = false;
+                btn.classList.add("active");
+                btn.textContent = "Save";
+            }
+        }
+
+        // ---------- blacklist modal ----------
+
+        async function openBlacklistModal() {
+            const textarea = document.getElementById("blacklist-textarea");
+            const errorEl = document.getElementById("blacklist-error");
+            errorEl.textContent = "";
+            textarea.value = "Loading...";
+
+            document.getElementById("blacklistModal").classList.add("open");
+
+            try {
+                const res = await fetch("/admin/blacklist", {
+                    headers: { "Authorization": "Basic " + btoa("admin:admin") }
+                });
+                if (!res.ok) throw new Error("Failed to load");
+                const data = await res.json();
+                textarea.value = data.content;
+            } catch (err) {
+                textarea.value = "";
+                errorEl.textContent = "Could not load blacklist.txt. Please try again.";
+            }
+        }
+
+        function closeBlacklistModal() {
+            document.getElementById("blacklistModal").classList.remove("open");
+        }
+
+        async function saveBlacklist() {
+            const btn = document.getElementById("saveBlacklistBtn");
+            const errorEl = document.getElementById("blacklist-error");
+            const content = document.getElementById("blacklist-textarea").value;
+
+            errorEl.textContent = "";
+            btn.disabled = true;
+            btn.classList.remove("active");
+            btn.textContent = "Saving...";
+
+            try {
+                const res = await fetch("/admin/blacklist", {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Basic " + btoa("admin:admin")
+                    },
+                    body: JSON.stringify({ content })
+                });
+
+                if (res.ok) {
+                    closeBlacklistModal();
+                } else {
+                    const data = await res.json().catch(() => ({}));
+                    errorEl.textContent = data.error || "Could not save. Please try again.";
+                }
+            } catch (err) {
+                errorEl.textContent = "Network error. Please try again.";
+            } finally {
                 btn.disabled = false;
                 btn.classList.add("active");
                 btn.textContent = "Save";

@@ -71,10 +71,7 @@ load_dotenv()
 # ==================== PATHS ====================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DB_PATH = os.getenv(
-    "DB_PATH",
-    os.path.join(BASE_DIR, "applications.db")
-)
+DB_PATH = os.path.join(BASE_DIR, "applications.db")
 
 BLACKLIST_PATH = os.path.join(BASE_DIR, "blacklist.txt")
 
@@ -372,7 +369,7 @@ def recruitment_page():
 
 @app.route("/Logos/<path:filename>")
 def logos(filename):
-    return send_from_directory(os.path.join(BASE_DIR, "Logos"), filename)
+    return send_from_directory(os.path.join(os.path.dirname(BASE_DIR), "Logos"), filename)
 
 def send_interview_email(name, recipient, interview_date, interview_time):
     try:
@@ -633,6 +630,46 @@ def admin_applications_csv():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=applications.csv"},
     )
+
+
+# ===================== ADMIN: BLACKLIST EDITOR =====================
+# Lets the admin view/edit blacklist.txt straight from the dashboard.
+# is_blacklisted()/load_blacklist() re-read the file on every check, so a
+# saved edit here takes effect on the very next request -- no restart needed.
+
+BLACKLIST_MAX_BYTES = 200 * 1024  # 200 KB is plenty for a list of IPs
+
+
+@app.route("/admin/blacklist", methods=["GET"])
+@requires_admin_auth
+def get_blacklist():
+    content = ""
+    if os.path.exists(BLACKLIST_PATH):
+        with open(BLACKLIST_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+    return jsonify({"content": content})
+
+
+@app.route("/admin/blacklist", methods=["PUT"])
+@requires_admin_auth
+def update_blacklist():
+    data = request.get_json(silent=True)
+    if data is None or not isinstance(data.get("content"), str):
+        return jsonify({"error": "Invalid request."}), 400
+
+    content = data["content"]
+    if len(content.encode("utf-8")) > BLACKLIST_MAX_BYTES:
+        return jsonify({"error": "File is too large."}), 400
+
+    # normalize line endings, make sure it ends with a newline
+    content = content.replace("\r\n", "\n")
+    if content and not content.endswith("\n"):
+        content += "\n"
+
+    with open(BLACKLIST_PATH, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    return jsonify({"ok": True})
 
 
 # ===================== ENTRY POINT =====================
