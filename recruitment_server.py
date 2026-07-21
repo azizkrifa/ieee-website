@@ -334,7 +334,7 @@ def is_blacklisted(ip):
 def add_to_blacklist(ip, reason=""):
     if ip in load_blacklist():
         return  # already there, don't add a duplicate line
-    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    timestamp = datetime.now(ZoneInfo("Africa/Tunis")).replace(tzinfo=None).isoformat(timespec="seconds")
     comment = f"  # auto-blocked {timestamp}" + (f" - {reason}" if reason else "")
     with open(BLACKLIST_PATH, "a", encoding="utf-8") as f:
         f.write(f"{ip}{comment}\n")
@@ -520,28 +520,32 @@ ADMIN_PAGE_TEMPLATE = """
 <!DOCTYPE html><html><head><meta charset="utf-8">
 <title>Applications — IEEE FSM Admin</title>
 <style>
-  body {{ font-family: -apple-system, Arial, sans-serif; background:#0D1117; color:#E6EDF3; margin:0; padding:32px; }}
-  h1 {{ font-size:20px; margin-bottom:4px; }}
-  p.meta {{ color:#7D94A8; font-size:13px; margin-top:0 0 20px; }}
-  table {{ border-collapse: collapse; width:100%; font-size:13px; }}
-  th, td {{ border:1px solid #263141; padding:8px 10px; text-align:left; white-space:nowrap; }}
-  th {{ background:#141922; position:sticky; top:0; }}
-  tr:nth-child(even) {{ background:#141922; }}
-  a.export {{ color:#60B8EE; font-size:13px; }}
-  .delete-btn{{ background:#d32f2f;
+  body { font-family: -apple-system, Arial, sans-serif; background:#0D1117; color:#E6EDF3; margin:0; padding:32px; }
+  h1 { font-size:20px; margin-bottom:4px; }
+  p.meta { color:#7D94A8; font-size:13px; margin-top:0 0 20px; }
+  table { border-collapse: collapse; width:100%; font-size:13px; }
+  th, td { border:1px solid #263141; padding:8px 10px; text-align:left; white-space:nowrap; }
+  th { background:#141922; position:sticky; top:0; }
+  tr:nth-child(even) { background:#141922; }
+  a.export { color:#60B8EE; font-size:13px; }
+  .delete-btn{ background:#d32f2f;
     color:white;
     border:none;
     padding:6px 12px;
     border-radius:6px;
     cursor:pointer;
-}}
+}
 
-   .delete-btn:hover{{
-    background:#b71c1c;
-  }}
+.delete-btn:hover{
+background:#b71c1c;
+  }
+
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: #60B8EE; }
+  .sort-arrow { font-size: 10px; opacity: 0.75; margin-left: 4px; }
 
 </style></head><body>
-<h1>IEEE FSM — Applications ({count})</h1>
+<h1 id="page-title">IEEE FSM — Applications (__COUNT__)</h1>
 <p class="meta"><a class="export" href="/admin/applications.csv">Download CSV</a></p>
 <input id="searchInput" type="text" placeholder="Search by name, email, phone, ID..."
     style="
@@ -555,90 +559,137 @@ ADMIN_PAGE_TEMPLATE = """
     ">
 <table><thead>
 <tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Level</th><th>Field</th>
-<th>Birthday</th><th>ID</th><th>Interview</th><th>IP</th><th>Submitted</th>
-<th>Actions</th></tr></thead><tbody id="applicationsBody">{rows}</tbody>
+<th class="sortable" onclick="sortTable('birthday')">Birthday <span class="sort-arrow" id="arrow-birthday"></span></th>
+<th>ID</th>
+<th class="sortable" onclick="sortTable('interview')">Interview <span class="sort-arrow" id="arrow-interview"></span></th>
+<th>IP</th>
+<th class="sortable" onclick="sortTable('submitted')">Submitted <span class="sort-arrow" id="arrow-submitted"></span></th>
+<th>Actions</th></tr></tr></thead><tbody id="applicationsBody">__ROWS__</tbody>
 </table>
 
 <script>
 const searchInput = document.getElementById("searchInput");
 
-searchInput.addEventListener("keyup", function () {{
+let currentSortKey = null;
+let currentSortOrder = 1; // 1 = ascending, -1 = descending
+
+function sortTable(key) {
+    if (currentSortKey === key) {
+        currentSortOrder *= -1;
+    } else {
+        currentSortKey = key;
+        currentSortOrder = 1;
+    }
+    applySort();
+}
+
+function applySort() {
+    // Update arrow indicators
+    ["birthday", "interview", "submitted"].forEach(k => {
+        const arrow = document.getElementById("arrow-" + k);
+        if (!arrow) return;
+        arrow.textContent = (k === currentSortKey)
+            ? (currentSortOrder === 1 ? "▲" : "▼")
+            : "";
+    });
+
+    if (!currentSortKey) return;
+
+    const tbody = document.getElementById("applicationsBody");
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+
+    rows.sort((rowA, rowB) => {
+        const valA = rowA.dataset[currentSortKey] || "";
+        const valB = rowB.dataset[currentSortKey] || "";
+        return valA.localeCompare(valB) * currentSortOrder;
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+searchInput.addEventListener("keyup", function () {
     const value = this.value.toLowerCase();
 
-    document.querySelectorAll("#applicationsBody tr").forEach(row => {{
+    document.querySelectorAll("#applicationsBody tr").forEach(row => {
         row.style.display = row.innerText.toLowerCase().includes(value)
             ? ""
             : "none";
-    }});
-}});
+    });
+});
 
-async function deleteApplication(id){{
+async function deleteApplication(id){
 
     if(!confirm("Delete this application?"))
         return;
 
-    const res = await fetch("/admin/applications/" + id,{{
+    const res = await fetch("/admin/applications/" + id,{
         method:"DELETE",
-        headers:{{
+        headers:{
             "Authorization":"Basic " + btoa("admin:admin")
-        }}
-    }});
+        }
+    });
 
-    if(res.ok){{
+    if(res.ok){
 
         location.reload();
 
-    }}else{{
+    }else{
 
         alert("Unable to delete application.");
 
-    }}
+    }
 
-}}
+}
 
-async function refreshApplications() {{
+async function refreshApplications() {
 
-    const res = await fetch("/admin/applications/json", {{
-        headers: {{
+    const res = await fetch("/admin/applications/json", {
+        headers: {
             "Authorization": "Basic " + btoa("admin:admin")
-        }}
-    }});
+        }
+    });
 
     const data = await res.json();
 
     const tbody = document.getElementById("applicationsBody");
 
+    document.getElementById("page-title").textContent =
+        `IEEE FSM — Applications (${data.length})`;
+
     tbody.innerHTML = data.map(a => `
-        <tr>
-            <td>${{a.id}}</td>
-            <td>${{a.full_name}}</td>
-            <td>${{a.phone}}</td>
-            <td>${{a.email}}</td>
-            <td>${{a.study_level}}</td>
-            <td>${{a.study_field}}</td>
-            <td>${{a.birthday}}</td>
-            <td>${{a.id_number}}</td>
-            <td>${{a.interview_date}} ${{a.interview_time}}</td>
-            <td>${{a.ip_address}}</td>
-            <td>${{a.created_at}}</td>
+        <tr data-birthday="${a.birthday}" data-interview="${a.interview_date} ${a.interview_time}" data-submitted="${a.created_at}">
+            <td>${a.id}</td>
+            <td>${a.full_name}</td>
+            <td>${a.phone}</td>
+            <td>${a.email}</td>
+            <td>${a.study_level}</td>
+            <td>${a.study_field}</td>
+            <td>${a.birthday}</td>
+            <td>${a.id_number}</td>
+            <td>${a.interview_date} ${a.interview_time}</td>
+            <td>${a.ip_address}</td>
+            <td>${a.created_at}</td>
             <td>
                 <button class="delete-btn"
-                    onclick="deleteApplication(${{a.id}})">
+                    onclick="deleteApplication(${a.id})">
                     Delete
                 </button>
             </td>
         </tr>
     `).join("");
 
+    // Reapply current sort
+    applySort();
+
     // Reapply current filter
     const value = searchInput.value.toLowerCase();
 
-    document.querySelectorAll("#applicationsBody tr").forEach(row => {{
+    document.querySelectorAll("#applicationsBody tr").forEach(row => {
         row.style.display = row.innerText.toLowerCase().includes(value)
            ? ""
            : "none";
-    }});
-}}
+    });
+}
 
 setInterval(refreshApplications, 5000);
 
@@ -661,7 +712,10 @@ def admin_applications():
     db = get_db()
     apps = _fetch_all_applications(db)
     rows_html = "".join(
-        f"<tr><td>{a['id']}</td><td>{a['full_name']}</td><td>{a['phone']}</td>"
+        f"<tr data-birthday=\"{a['birthday']}\" "
+        f"data-interview=\"{a['interview_date']} {a['interview_time']}\" "
+        f"data-submitted=\"{a['created_at']}\">"
+        f"<td>{a['id']}</td><td>{a['full_name']}</td><td>{a['phone']}</td>"
         f"<td>{a['email']}</td><td>{a['study_level']}</td><td>{a['study_field']}</td>"
         f"<td>{a['birthday']}</td><td>{a['id_number']}</td>"
         f"<td>{a['interview_date']} {a['interview_time']}</td>"
@@ -672,8 +726,11 @@ def admin_applications():
         f"</td></tr>"
         for a in apps
     )
-    return ADMIN_PAGE_TEMPLATE.format(count=len(apps), rows=rows_html)
-
+    return (
+        ADMIN_PAGE_TEMPLATE
+        .replace("__COUNT__", str(len(apps)))
+        .replace("__ROWS__", rows_html)
+    )
 @app.route("/admin/applications/json")
 @requires_admin_auth
 def admin_applications_json():
