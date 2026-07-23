@@ -1542,7 +1542,12 @@
             renderConfirmSummary(data, interview, result.reference);
             form.style.display = 'none';
             confirmCard.classList.add('show');
-            confirmCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            const navH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 0;
+            const gap = 20;
+            const targetY = window.scrollY + confirmCard.getBoundingClientRect().top - navH - gap;
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
+
             return;
           }
 

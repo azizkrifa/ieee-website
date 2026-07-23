@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Applications — IEEE FSM Admin</title>
+    <title>Applications — IEEE FSM SB Admin</title>
     <style>
         body {
             font-family: -apple-system, Arial, sans-serif;
@@ -381,8 +381,7 @@
 
             for (const id of ids) {
                 await fetch("/admin/applications/" + id, {
-                    method: "DELETE",
-                    headers: { "Authorization": "Basic " + btoa("admin:admin") }
+                    method: "DELETE"
                 });
             }
 
@@ -455,8 +454,7 @@
                 const res = await fetch("/admin/applications/" + editingId, {
                     method: "PUT",
                     headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": "Basic " + btoa("admin:admin")
+                        "Content-Type": "application/json"
                     },
                     body: JSON.stringify(payload)
                 });
@@ -527,9 +525,7 @@
             document.getElementById("blacklistModal").classList.add("open");
 
             try {
-                const res = await fetch("/admin/blacklist", {
-                    headers: { "Authorization": "Basic " + btoa("admin:admin") }
-                });
+                const res = await fetch("/admin/blacklist");
                 if (!res.ok) throw new Error("Failed to load");
                 const data = await res.json();
                 textarea.value = data.content;
@@ -557,8 +553,7 @@
                 const res = await fetch("/admin/blacklist", {
                     method: "PUT",
                     headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": "Basic " + btoa("admin:admin")
+                        "Content-Type": "application/json"
                     },
                     body: JSON.stringify({ content })
                 });
@@ -620,11 +615,7 @@
 
         async function refreshApplications() {
 
-            const res = await fetch("/admin/applications/json", {
-                headers: {
-                    "Authorization": "Basic " + btoa("admin:admin")
-                }
-            });
+            const res = await fetch("/admin/applications/json");
 
             const data = await res.json();
 
