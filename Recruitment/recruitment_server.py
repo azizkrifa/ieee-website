@@ -47,6 +47,7 @@ Configuration (optional environment variables):
   PORT                     -> default 5000
 """
 
+from collections import deque
 import csv
 import io
 import logging
@@ -74,6 +75,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "applications.db")
 
 BLACKLIST_PATH = os.path.join(BASE_DIR, "blacklist.txt")
+
+EXCEPTIONS_PATH = os.path.join(BASE_DIR, "exceptions.txt")
 
 # ==================== SECURITY ====================
 MAX_SUBMISSIONS_PER_IP = int(
@@ -173,8 +176,37 @@ def log_with_real_client_ip(response):
     color = _status_color(response.status_code)
     timestamp = datetime.now().strftime("%d/%b/%Y %H:%M:%S")
     print(f'{client_ip()} - [{timestamp}] "{color}{request.method}{color} {request.path}" {color}{response.status_code}{_ANSI_RESET}')
+    record_traffic(response)
     return response
 
+
+
+
+# ===================== TRAFFIC MONITOR =====================
+# Rolling in-memory log of every request the server handles, so any admin
+# looking at the dashboard can see live traffic -- not just what ends up in
+# the applications table. Shared across all admins (single process), capped
+# so it can't grow unbounded. Not persisted across restarts on purpose --
+# this is a live monitor, not an audit trail.
+
+_traffic_log = deque(maxlen=500)
+
+# don't log the traffic monitor polling itself -- it would just flood the
+# log with its own requests every couple of seconds while the tab is open.
+_TRAFFIC_LOG_EXCLUDE = {"/admin/traffic"}
+
+
+def record_traffic(response):
+    if request.path in _TRAFFIC_LOG_EXCLUDE:
+        return
+    _traffic_log.appendleft({
+        "time": datetime.now(ZoneInfo("Africa/Tunis")).replace(tzinfo=None).isoformat(timespec="seconds"),
+        "ip": client_ip(),
+        "method": request.method,
+        "path": request.path,
+        "status": response.status_code,
+        "blacklisted": is_blacklisted(client_ip()),
+    })
 
 # in-memory last-attempt timestamps per IP (fine for a single-process app)
 _last_attempt_by_ip = {}
@@ -337,6 +369,27 @@ def add_to_blacklist(ip, reason=""):
         f.write(f"{ip}{comment}\n")
 
 
+# ===================== EXCEPTIONS (exceptions.txt) =====================
+# One IP per line, same format as blacklist.txt. IPs on this list are
+# allowed to submit past MAX_SUBMISSIONS_PER_IP without being auto-blocked --
+# e.g. shared campus wifi/NAT where several real applicants share one IP.
+
+def load_exceptions():
+    ips = set()
+    if not os.path.exists(EXCEPTIONS_PATH):
+        return ips
+    with open(EXCEPTIONS_PATH, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.split("#", 1)[0].strip()  # drop comments
+            if line:
+                ips.add(line)
+    return ips
+
+
+def is_exception(ip):
+    return ip in load_exceptions()
+
+
 # ===================== AUTH (for /admin) =====================
 
 def requires_admin_auth(f):
@@ -446,17 +499,18 @@ def create_application():
         return jsonify({"error": "You're submitting too fast. Please wait a few seconds and try again."}), 429
     _last_attempt_by_ip[ip] = now
 
-    # ---- rate limiting: lifetime cap per IP ----
-    db = get_db()
-    ip_count = db.execute(
-        "SELECT COUNT(*) AS c FROM applications WHERE ip_address = ?", (ip,)
-    ).fetchone()["c"]
-    if ip_count >= MAX_SUBMISSIONS_PER_IP:
-        add_to_blacklist(ip, reason=f"reached max of {MAX_SUBMISSIONS_PER_IP} submissions")
-        return jsonify({
-            "error": f"Maximum of {MAX_SUBMISSIONS_PER_IP} applications reached from this network. "
-                     f"If this is a mistake, please contact the branch directly."
-        }), 429
+    # ---- rate limiting: lifetime cap per IP (skipped for exception IPs) ----
+    if not is_exception(ip):
+        db = get_db()
+        ip_count = db.execute(
+            "SELECT COUNT(*) AS c FROM applications WHERE ip_address = ?", (ip,)
+        ).fetchone()["c"]
+        if ip_count >= MAX_SUBMISSIONS_PER_IP:
+            add_to_blacklist(ip, reason=f"reached max of {MAX_SUBMISSIONS_PER_IP} submissions")
+            return jsonify({
+                "error": f"Maximum of {MAX_SUBMISSIONS_PER_IP} applications reached from this network. "
+                         f"If this is a mistake, please contact the branch directly."
+            }), 429
 
     # ---- validation ----
     errors, cleaned = validate_payload(data)
@@ -593,7 +647,7 @@ def admin_applications():
         f"<td>{a['email']}</td><td>{a['study_level']}</td><td>{a['study_field']}</td>"
         f"<td>{a['birthday']}</td><td>{a['id_number']}</td>"
         f"<td>{a['interview_date']} {a['interview_time']}</td>"
-        f"<td>{a['ip_address']}</td><td>{a['created_at']}</td>"
+        f"<td class=\"ip-cell\" title=\"${{a.ip_address}}\">${{a.ip_address}}</td>"
         f"</tr>"
         for a in apps
     )
@@ -669,6 +723,61 @@ def update_blacklist():
     with open(BLACKLIST_PATH, "w", encoding="utf-8") as f:
         f.write(content)
 
+    return jsonify({"ok": True})
+
+
+# ===================== ADMIN: EXCEPTIONS EDITOR =====================
+# Same idea as the blacklist editor above, but for exceptions.txt. IPs here
+# are allowed past MAX_SUBMISSIONS_PER_IP. Re-read on every check, so a
+# saved edit here takes effect on the very next request -- no restart needed.
+
+EXCEPTIONS_MAX_BYTES = 200 * 1024  # 200 KB is plenty for a list of IPs
+
+
+@app.route("/admin/exceptions", methods=["GET"])
+@requires_admin_auth
+def get_exceptions():
+    content = ""
+    if os.path.exists(EXCEPTIONS_PATH):
+        with open(EXCEPTIONS_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+    return jsonify({"content": content})
+
+
+@app.route("/admin/exceptions", methods=["PUT"])
+@requires_admin_auth
+def update_exceptions():
+    data = request.get_json(silent=True)
+    if data is None or not isinstance(data.get("content"), str):
+        return jsonify({"error": "Invalid request."}), 400
+
+    content = data["content"]
+    if len(content.encode("utf-8")) > EXCEPTIONS_MAX_BYTES:
+        return jsonify({"error": "File is too large."}), 400
+
+    # normalize line endings, make sure it ends with a newline
+    content = content.replace("\r\n", "\n")
+    if content and not content.endswith("\n"):
+        content += "\n"
+
+    with open(EXCEPTIONS_PATH, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    return jsonify({"ok": True})
+
+
+# ===================== ADMIN: TRAFFIC MONITOR =====================
+
+@app.route("/admin/traffic", methods=["GET"])
+@requires_admin_auth
+def get_traffic():
+    return jsonify({"entries": list(_traffic_log)})
+
+
+@app.route("/admin/traffic", methods=["DELETE"])
+@requires_admin_auth
+def clear_traffic():
+    _traffic_log.clear()
     return jsonify({"ok": True})
 
 

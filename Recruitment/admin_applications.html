@@ -182,7 +182,8 @@
         }
 
         .modal.wide {
-            width: 560px;
+            width: 820px;
+            max-width: 95vw;
         }
 
         #blacklist-textarea {
@@ -206,6 +207,144 @@
             font-size: 12px;
             margin: 8px 0 0;
         }
+
+        .modal-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .modal-tab {
+            background: #0D1117;
+            color: #7D94A8;
+            border: 1px solid #2a313d;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .modal-tab.active {
+            background: #2d3644;
+            color: #E6EDF3;
+            border-color: #3a4557;
+        }
+
+        .traffic-panel {
+            display: none;
+            flex-direction: column;
+            height: 320px;
+            background: #0D1117;
+            border: 1px solid #333;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .traffic-table-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .traffic-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 12px;
+        }
+
+        .traffic-table col.col-time {
+            width: 18%;
+        }
+
+        .traffic-table col.col-ip {
+            width: 20%;
+        }
+
+        .traffic-table col.col-method {
+            width: 10%;
+        }
+
+        .traffic-table col.col-path {
+            width: 40%;
+        }
+
+        .traffic-table col.col-status {
+            width: 12%;
+        }
+
+        .traffic-table th {
+            position: sticky;
+            top: 0;
+            background: #141922;
+            color: #7D94A8;
+            text-align: left;
+            padding: 6px 10px;
+            border-bottom: 1px solid #263141;
+        }
+
+        .traffic-table td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #1c232e;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .traffic-table td.col-path {
+            white-space: normal;
+            word-break: break-all;
+        }
+
+        .traffic-table td:not(.col-path) {
+            white-space: nowrap;
+        }
+
+        .traffic-table tr.blacklisted-row td {
+            color: #ff6b6b;
+        }
+
+        .traffic-status-2 {
+            color: #8fd19e;
+        }
+
+        .traffic-status-3 {
+            color: #7dc4e0;
+        }
+
+        .traffic-status-4 {
+            color: #f0b866;
+        }
+
+        .traffic-status-5 {
+            color: #ff6b6b;
+        }
+
+        .traffic-empty {
+            color: #7D94A8;
+            font-size: 12px;
+            padding: 14px;
+            text-align: center;
+        }
+
+
+        td.ip-cell {
+            min-width: 110px;
+            max-width: 110px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            transition: max-width .2s ease;
+        }
+
+        td.ip-cell:hover {
+            max-width: 420px;
+            overflow: visible;
+            text-overflow: clip;
+            background: #1b2330;
+            position: relative;
+            z-index: 100;
+        }
     </style>
 </head>
 
@@ -225,7 +364,7 @@
     <div class="toolbar">
         <button id="editBtn" class="toolbar-btn" disabled onclick="openEditModal()">✎ Edit</button>
         <button id="deleteBtn" class="toolbar-btn" disabled onclick="deleteSelected()">🗑 Delete Selected</button>
-        <button id="blacklistBtn" class="toolbar-btn active" onclick="openBlacklistModal()">🚫 Blacklist</button>
+        <button id="blacklistBtn" class="toolbar-btn active" onclick="openBlacklistModal()">•••</button>
     </div>
     <table>
         <thead>
@@ -284,12 +423,47 @@
 
     <div id="blacklistModal" class="modal-overlay">
         <div class="modal wide">
-            <h2>Blacklist</h2>
-            <textarea id="blacklist-textarea" spellcheck="false" placeholder="One IP per line. # starts a comment."></textarea>
-            <p class="modal-hint">One IP per line. "#" starts a comment. Changes apply immediately, no restart needed.</p>
+            <h2 id="blacklist-modal-title">Blacklist</h2>
+            <div class="modal-tabs">
+                <button id="tab-blacklist" class="modal-tab active" onclick="switchListMode('blacklist')">🚫
+                    Blacklist</button>
+                <button id="tab-exceptions" class="modal-tab" onclick="switchListMode('exceptions')">✅
+                    Exceptions</button>
+                <button id="tab-traffic" class="modal-tab" onclick="switchListMode('traffic')">🌐
+                    Traffic</button>
+            </div>
+            <textarea id="blacklist-textarea" spellcheck="false"
+                placeholder="One IP per line. # starts a comment."></textarea>
+            <div id="traffic-panel" class="traffic-panel">
+                <div class="traffic-table-scroll">
+                    <table class="traffic-table">
+                        <colgroup>
+                            <col class="col-time">
+                            <col class="col-ip">
+                            <col class="col-method">
+                            <col class="col-path">
+                            <col class="col-status">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>IP</th>
+                                <th>Method</th>
+                                <th>Path</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="traffic-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <p id="blacklist-modal-hint" class="modal-hint">One IP per line. "#" starts a comment. Changes apply
+                immediately, no restart needed.</p>
             <p id="blacklist-error" class="modal-error"></p>
             <div class="modal-actions">
                 <button class="toolbar-btn active" onclick="closeBlacklistModal()">Cancel</button>
+                <button id="clearTrafficBtn" class="toolbar-btn active" onclick="clearTraffic()"
+                    style="display:none;">🧹 Clear requests</button>
                 <button id="saveBlacklistBtn" class="toolbar-btn active" onclick="saveBlacklist()">Save</button>
             </div>
         </div>
@@ -514,35 +688,151 @@
             }
         }
 
-        // ---------- blacklist modal ----------
+        // ---------- blacklist / exceptions modal ----------
 
-        async function openBlacklistModal() {
+        const LIST_MODES = {
+            blacklist: {
+                endpoint: "/admin/blacklist",
+                title: "Blacklist",
+                hint: "One IP per line. \"#\" starts a comment. Changes apply immediately, no restart needed.",
+                placeholder: "One IP per line. # starts a comment.",
+                loadError: "Could not load blacklist.txt. Please try again."
+            },
+            exceptions: {
+                endpoint: "/admin/exceptions",
+                title: "Exceptions",
+                hint: "One IP per line. \"#\" starts a comment. These IPs can submit past the normal max-per-IP limit.",
+                placeholder: "One IP per line. # starts a comment.",
+                loadError: "Could not load exceptions.txt. Please try again."
+            },
+            traffic: {
+                title: "Traffic",
+                hint: "Live requests hitting the server, newest first. Updates every 3s while this tab is open."
+            }
+        };
+
+        let currentListMode = "blacklist";
+        let trafficPollTimer = null;
+
+        async function openBlacklistModal(mode = "blacklist") {
+            document.getElementById("blacklistModal").classList.add("open");
+            await switchListMode(mode);
+        }
+
+        async function switchListMode(mode) {
+            currentListMode = mode;
+
+            document.getElementById("tab-blacklist").classList.toggle("active", mode === "blacklist");
+            document.getElementById("tab-exceptions").classList.toggle("active", mode === "exceptions");
+            document.getElementById("tab-traffic").classList.toggle("active", mode === "traffic");
+
+            const cfg = LIST_MODES[mode];
+            document.getElementById("blacklist-modal-title").textContent = cfg.title;
+            document.getElementById("blacklist-modal-hint").textContent = cfg.hint;
+
             const textarea = document.getElementById("blacklist-textarea");
+            const trafficPanel = document.getElementById("traffic-panel");
+            const saveBtn = document.getElementById("saveBlacklistBtn");
+            const clearBtn = document.getElementById("clearTrafficBtn");
             const errorEl = document.getElementById("blacklist-error");
             errorEl.textContent = "";
+
+            if (trafficPollTimer) {
+                clearInterval(trafficPollTimer);
+                trafficPollTimer = null;
+            }
+
+            if (mode === "traffic") {
+                textarea.style.display = "none";
+                trafficPanel.style.display = "flex";
+                saveBtn.style.display = "none";
+                clearBtn.style.display = "";
+                await loadTraffic();
+                trafficPollTimer = setInterval(loadTraffic, 3000);
+                return;
+            }
+
+            textarea.style.display = "";
+            trafficPanel.style.display = "none";
+            saveBtn.style.display = "";
+            clearBtn.style.display = "none";
+
+            textarea.placeholder = cfg.placeholder;
             textarea.value = "Loading...";
 
-            document.getElementById("blacklistModal").classList.add("open");
-
             try {
-                const res = await fetch("/admin/blacklist");
+                const res = await fetch(cfg.endpoint);
                 if (!res.ok) throw new Error("Failed to load");
                 const data = await res.json();
                 textarea.value = data.content;
             } catch (err) {
                 textarea.value = "";
-                errorEl.textContent = "Could not load blacklist.txt. Please try again.";
+                errorEl.textContent = cfg.loadError;
+            }
+        }
+
+        async function loadTraffic() {
+            const body = document.getElementById("traffic-body");
+            const errorEl = document.getElementById("blacklist-error");
+            try {
+                const res = await fetch("/admin/traffic");
+                if (!res.ok) throw new Error("Failed to load");
+                const data = await res.json();
+
+                if (!data.entries || data.entries.length === 0) {
+                    body.innerHTML = `<tr><td colspan="5" class="traffic-empty">No requests logged yet.</td></tr>`;
+                    return;
+                }
+
+                body.innerHTML = data.entries.map(e => {
+                    const statusClass = "traffic-status-" + String(e.status)[0];
+                    const rowClass = e.blacklisted ? "blacklisted-row" : "";
+                    return `<tr class="${rowClass}">
+                        <td>${e.time}</td>
+                        <td>${e.ip}</td>
+                        <td>${e.method}</td>
+                        <td class="col-path">${e.path}</td>
+                        <td class="${statusClass}">${e.status}</td>
+                    </tr>`;
+                }).join("");
+            } catch (err) {
+                errorEl.textContent = "Could not load traffic. Please try again.";
+            }
+        }
+
+        async function clearTraffic() {
+            const btn = document.getElementById("clearTrafficBtn");
+            const errorEl = document.getElementById("blacklist-error");
+            btn.disabled = true;
+            btn.classList.remove("active");
+
+            try {
+                const res = await fetch("/admin/traffic", { method: "DELETE" });
+                if (!res.ok) throw new Error("Failed to clear");
+                await loadTraffic();
+            } catch (err) {
+                errorEl.textContent = "Could not clear traffic log. Please try again.";
+            } finally {
+                btn.disabled = false;
+                btn.classList.add("active");
             }
         }
 
         function closeBlacklistModal() {
             document.getElementById("blacklistModal").classList.remove("open");
+            if (trafficPollTimer) {
+                clearInterval(trafficPollTimer);
+                trafficPollTimer = null;
+            }
         }
 
         async function saveBlacklist() {
+            if (currentListMode === "traffic") return; // traffic tab has no save action
+
             const btn = document.getElementById("saveBlacklistBtn");
             const errorEl = document.getElementById("blacklist-error");
             const content = document.getElementById("blacklist-textarea").value;
+            const cfg = LIST_MODES[currentListMode];
 
             errorEl.textContent = "";
             btn.disabled = true;
@@ -550,7 +840,7 @@
             btn.textContent = "Saving...";
 
             try {
-                const res = await fetch("/admin/blacklist", {
+                const res = await fetch(cfg.endpoint, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json"
@@ -559,7 +849,11 @@
                 });
 
                 if (res.ok) {
-                    closeBlacklistModal();
+                    // modal stays open -- just flash a quick confirmation on the button
+                    btn.textContent = "Saved ✓";
+                    setTimeout(() => {
+                        btn.textContent = "Save";
+                    }, 1200);
                 } else {
                     const data = await res.json().catch(() => ({}));
                     errorEl.textContent = data.error || "Could not save. Please try again.";
@@ -569,7 +863,6 @@
             } finally {
                 btn.disabled = false;
                 btn.classList.add("active");
-                btn.textContent = "Save";
             }
         }
 
@@ -613,6 +906,11 @@
 
         // ---------- auto refresh ----------
 
+        let isHoveringTable = false;
+        const applicationsTbody = document.getElementById("applicationsBody");
+        applicationsTbody.addEventListener("mouseenter", () => { isHoveringTable = true; });
+        applicationsTbody.addEventListener("mouseleave", () => { isHoveringTable = false; });
+
         async function refreshApplications() {
 
             const res = await fetch("/admin/applications/json");
@@ -638,7 +936,7 @@
             <td>${a.birthday}</td>
             <td>${a.id_number}</td>
             <td>${a.interview_date} ${a.interview_time}</td>
-            <td>${a.ip_address}</td>
+            <td class="ip-cell" title="${a.ip_address}">${a.ip_address}</td>
             <td>${a.created_at}</td>
         </tr>
     `).join("");
