@@ -304,6 +304,7 @@
             color: #ff6b6b;
         }
 
+
         .traffic-status-2 {
             color: #8fd19e;
         }
@@ -313,11 +314,15 @@
         }
 
         .traffic-status-4 {
-            color: #f0b866;
+            color: #ff6b6b;
         }
 
         .traffic-status-5 {
-            color: #ff6b6b;
+            color: #f0b866;
+        }
+
+        .traffic-status-201 {
+            color: #b18cf0;
         }
 
         .traffic-empty {
@@ -350,11 +355,12 @@
 
 <body>
     <h1 id="page-title">IEEE FSM SB — Applications (__COUNT__)</h1>
-    <p class="meta"><a class="export" href="/admin/applications.csv">Download CSV</a></p>
-    <input id="searchInput" type="text" placeholder="Search by name, email, phone, ID..." style="
+
+    <p class="meta">
+        <input id="searchInput" type="text" placeholder="Search by name, email, phone, ID..." style="
         width:30%;
         padding:10px;
-        margin:15px 0;
+        margin-top:19px;
         border-radius:8px;
         border:1px solid #333;
         background:#141922;
@@ -364,8 +370,11 @@
     <div class="toolbar">
         <button id="editBtn" class="toolbar-btn" disabled onclick="openEditModal()">✎ Edit</button>
         <button id="deleteBtn" class="toolbar-btn" disabled onclick="deleteSelected()">🗑 Delete Selected</button>
+        <button class="toolbar-btn active"><a href="/admin/applications.csv" class="export"
+                style="text-decoration: none; color: white;">Download CSV</a></button>
         <button id="blacklistBtn" class="toolbar-btn active" onclick="openBlacklistModal()">•••</button>
     </div>
+    
     <table>
         <thead>
             <tr>
@@ -785,7 +794,9 @@
                 }
 
                 body.innerHTML = data.entries.map(e => {
-                    const statusClass = "traffic-status-" + String(e.status)[0];
+                    const statusClass = e.status === 201
+                        ? "traffic-status-201"
+                        : "traffic-status-" + String(e.status)[0];
                     const rowClass = e.blacklisted ? "blacklisted-row" : "";
                     return `<tr class="${rowClass}">
                         <td>${e.time}</td>
@@ -911,6 +922,10 @@
         applicationsTbody.addEventListener("mouseenter", () => { isHoveringTable = true; });
         applicationsTbody.addEventListener("mouseleave", () => { isHoveringTable = false; });
 
+        // Tracks the last known { count, last_id } from the cheap /meta
+        // endpoint so we can tell whether a real refresh is needed.
+        let lastKnownMeta = null;
+
         async function refreshApplications() {
 
             const res = await fetch("/admin/applications/json");
@@ -955,8 +970,49 @@
             updateToolbar();
         }
 
-        setInterval(refreshApplications, 5000);
+        // Poll the cheap /meta endpoint (just a count + newest id) every
+        // few seconds instead of the full table every time. The table is
+        // only actually re-fetched and rebuilt when a new submission (or
+        // deletion) is detected, so hovering, scrolling, selections, etc.
+        // aren't disturbed by no-op refreshes.
+        async function pollForChanges() {
+            try {
+                const res = await fetch("/admin/applications/meta");
+                if (!res.ok) return;
+                const meta = await res.json();
 
+                const changed =
+                    !lastKnownMeta ||
+                    meta.count !== lastKnownMeta.count ||
+                    meta.last_id !== lastKnownMeta.last_id;
+
+                if (changed) {
+                    lastKnownMeta = meta;
+                    // If the user is hovering, refreshApplications() will
+                    // itself skip the rebuild; we'll pick it up again the
+                    // next time meta differs from what we last stored, or
+                    // simply retry on the next poll tick.
+                    if (!isHoveringTable) {
+                        await refreshApplications();
+                    }
+                }
+            } catch (e) {
+                // Network hiccup — just try again on the next tick.
+            }
+        }
+
+        // Seed lastKnownMeta from the initial server-rendered table so the
+        // first poll doesn't trigger an unnecessary refresh.
+        lastKnownMeta = {
+            count: document.querySelectorAll("#applicationsBody tr").length,
+            last_id: Math.max(
+                0,
+                ...Array.from(document.querySelectorAll("#applicationsBody tr"))
+                    .map(tr => parseInt(tr.dataset.id, 10) || 0)
+            )
+        };
+
+        setInterval(pollForChanges, 5000);
     </script>
 
 </body>

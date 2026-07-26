@@ -1120,9 +1120,9 @@
       <div class="container">
         <form id="applicationForm" novalidate>
           <!-- honeypot: hidden from real visitors, bots tend to fill every field -->
-          <div style="position:absolute; left:-9999px; top:-9999px;" aria-hidden="true">
-            <label for="company">Company</label>
-            <input type="text" id="company" name="company" tabindex="-1" autocomplete="off">
+          <div style="display:none;" aria-hidden="true">
+            <label for="hp_field_9f2">Leave this field blank</label>
+            <input type="text" id="hp_field_9f2" name="hp_field_9f2" tabindex="-1" autocomplete="off">
           </div>
           <div class="apply-grid">
             <p class="submit-error-banner" id="submitErrorBanner" style="display:none;"></p>
@@ -1519,7 +1519,7 @@
           studyField: document.getElementById('studyField').value.trim(),
           birthday: document.getElementById('birthday').value,
           idNumber: document.getElementById('idNumber').value.trim(),
-          company: document.getElementById('company').value // honeypot, stays empty for real users
+          hp_field_9f2: document.getElementById('hp_field_9f2').value // honeypot, stays empty for real users
         };
 
         submitBtn.disabled = true;

@@ -320,15 +320,6 @@ def validate_payload(data):
 
 
 def client_ip():
-    # Behind a tunnel (ngrok, Cloudflare Tunnel) or reverse proxy, the raw
-    # TCP connection Flask sees is always localhost -- the real visitor's IP
-    # travels in a header instead. Checked in order of trustworthiness:
-    #   - CF-Connecting-IP / True-Client-IP: set by Cloudflare (incl. Cloudflare
-    #     Tunnel / cloudflared) directly to the real visitor IP, no parsing needed.
-    #   - X-Forwarded-For: set by ngrok and most other proxies; may contain a
-    #     comma-separated chain, so take the first (original client) entry.
-    #   - falls back to the raw socket address if none of the above are present
-    #     (e.g. running with no tunnel/proxy at all, straight on localhost/LAN).
     for header in ("CF-Connecting-IP", "True-Client-IP"):
         value = request.headers.get(header)
         if value:
@@ -489,8 +480,15 @@ def create_application():
         return jsonify({"error": "Invalid request."}), 400
 
     # ---- honeypot: bots fill every input, humans never see this one ----
-    if clean_str(data.get("company")):
-        # look successful to the bot, but don't actually store anything
+    honeypot_value = clean_str(data.get("hp_field_9f2"))
+    if honeypot_value:
+        # look successful to the bot, but don't actually store anything.
+        # Logged (not just silently dropped) so a false positive -- e.g.
+        # browser autofill catching the field again in the future -- shows
+        # up immediately in the console instead of looking like a normal
+        # successful submission with nothing in the DB.
+        print(f"[HONEYPOT TRIGGERED] ip={ip} value={honeypot_value!r} -- "
+              f"treated as bot, application NOT stored, NO email sent.")
         return jsonify({"ok": True, "reference": "N/A"}), 201
 
     # ---- rate limiting: burst throttle ----
@@ -500,8 +498,8 @@ def create_application():
     _last_attempt_by_ip[ip] = now
 
     # ---- rate limiting: lifetime cap per IP (skipped for exception IPs) ----
+    db = get_db()
     if not is_exception(ip):
-        db = get_db()
         ip_count = db.execute(
             "SELECT COUNT(*) AS c FROM applications WHERE ip_address = ?", (ip,)
         ).fetchone()["c"]
@@ -656,6 +654,18 @@ def admin_applications():
         .replace("__COUNT__", str(len(apps)))
         .replace("__ROWS__", rows_html)
     )
+
+
+@app.route("/admin/applications/meta")
+@requires_admin_auth
+def admin_applications_meta():
+    db = get_db()
+    row = db.execute(
+        "SELECT COUNT(*) AS count, COALESCE(MAX(id), 0) AS last_id "
+        "FROM excomapplications"
+    ).fetchone()
+    return jsonify({"count": row["count"], "last_id": row["last_id"]})
+
 
 @app.route("/admin/applications/json")
 @requires_admin_auth
