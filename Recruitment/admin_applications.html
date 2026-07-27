@@ -259,7 +259,7 @@
         }
 
         .traffic-table col.col-ip {
-            width: 20%;
+            width: 32%;
         }
 
         .traffic-table col.col-method {
@@ -267,11 +267,11 @@
         }
 
         .traffic-table col.col-path {
-            width: 40%;
+            width: 30%;
         }
 
         .traffic-table col.col-status {
-            width: 12%;
+            width: 10%;
         }
 
         .traffic-table th {
@@ -325,6 +325,10 @@
             color: #b18cf0;
         }
 
+        .traffic-status-202 {
+            color: #f2cc60;
+        }
+
         .traffic-empty {
             color: #7D94A8;
             font-size: 12px;
@@ -333,8 +337,51 @@
         }
 
 
-        td.ip-cell {
-            min-width: 110px;
+        .applications-table col.col-idx {
+            width: 4%;
+        }
+
+        .applications-table col.col-name {
+            width: 12%;
+        }
+
+        .applications-table col.col-phone {
+            width: 9%;
+        }
+
+        .applications-table col.col-email {
+            width: 14%;
+        }
+
+        .applications-table col.col-level {
+            width: 8%;
+        }
+
+        .applications-table col.col-field {
+            width: 9%;
+        }
+
+        .applications-table col.col-birthday {
+            width: 9%;
+        }
+
+        .applications-table col.col-idnum {
+            width: 8%;
+        }
+
+        .applications-table col.col-interview {
+            width: 10%;
+        }
+
+        .applications-table col.col-ip {
+            width: 8%;
+        }
+
+        .applications-table col.col-submitted {
+            width: 9%;
+        }
+
+        #applicationsBody td {
             max-width: 110px;
             overflow: hidden;
             white-space: nowrap;
@@ -342,7 +389,7 @@
             transition: max-width .2s ease;
         }
 
-        td.ip-cell:hover {
+        #applicationsBody td:hover {
             max-width: 420px;
             overflow: visible;
             text-overflow: clip;
@@ -375,7 +422,20 @@
         <button id="blacklistBtn" class="toolbar-btn active" onclick="openBlacklistModal()">•••</button>
     </div>
     
-    <table>
+    <table class="applications-table">
+        <colgroup>
+            <col class="col-idx">
+            <col class="col-name">
+            <col class="col-phone">
+            <col class="col-email">
+            <col class="col-level">
+            <col class="col-field">
+            <col class="col-birthday">
+            <col class="col-idnum">
+            <col class="col-interview">
+            <col class="col-ip">
+            <col class="col-submitted">
+        </colgroup>
         <thead>
             <tr>
                 <th>#</th>
@@ -472,7 +532,7 @@
             <div class="modal-actions">
                 <button class="toolbar-btn active" onclick="closeBlacklistModal()">Cancel</button>
                 <button id="clearTrafficBtn" class="toolbar-btn active" onclick="clearTraffic()"
-                    style="display:none;">🧹 Clear requests</button>
+                    style="display:none;">Clear requests</button>
                 <button id="saveBlacklistBtn" class="toolbar-btn active" onclick="saveBlacklist()">Save</button>
             </div>
         </div>
@@ -796,7 +856,9 @@
                 body.innerHTML = data.entries.map(e => {
                     const statusClass = e.status === 201
                         ? "traffic-status-201"
-                        : "traffic-status-" + String(e.status)[0];
+                        : e.status === 202
+                            ? "traffic-status-202"
+                            : "traffic-status-" + String(e.status)[0];
                     const rowClass = e.blacklisted ? "blacklisted-row" : "";
                     return `<tr class="${rowClass}">
                         <td>${e.time}</td>
@@ -927,6 +989,7 @@
         let lastKnownMeta = null;
 
         async function refreshApplications() {
+            if (isHoveringTable) return;
 
             const res = await fetch("/admin/applications/json");
 
@@ -942,17 +1005,17 @@
 
             tbody.innerHTML = data.map(a => `
         <tr data-id="${a.id}" data-birthday="${a.birthday}" data-interview="${a.interview_date} ${a.interview_time}" data-submitted="${a.created_at}" onclick="handleRowClick(event, '${a.id}')">
-            <td>${a.id}</td>
-            <td>${a.full_name}</td>
-            <td>${a.phone}</td>
-            <td>${a.email}</td>
-            <td>${a.study_level}</td>
-            <td>${a.study_field}</td>
-            <td>${a.birthday}</td>
-            <td>${a.id_number}</td>
-            <td>${a.interview_date} ${a.interview_time}</td>
-            <td class="ip-cell" title="${a.ip_address}">${a.ip_address}</td>
-            <td>${a.created_at}</td>
+            <td title="${a.id}">${a.id}</td>
+            <td title="${a.full_name}">${a.full_name}</td>
+            <td title="${a.phone}">${a.phone}</td>
+            <td title="${a.email}">${a.email}</td>
+            <td title="${a.study_level}">${a.study_level}</td>
+            <td title="${a.study_field}">${a.study_field}</td>
+            <td title="${a.birthday}">${a.birthday}</td>
+            <td title="${a.id_number}">${a.id_number}</td>
+            <td title="${a.interview_date} ${a.interview_time}">${a.interview_date} ${a.interview_time}</td>
+            <td title="${a.ip_address}">${a.ip_address}</td>
+            <td title="${a.created_at}">${a.created_at}</td>
         </tr>
     `).join("");
 
