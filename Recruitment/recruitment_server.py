@@ -53,8 +53,10 @@ import io
 import logging
 import os
 import re
-import sqlite3
 import time
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime, date, timezone
 from zoneinfo import ZoneInfo
 from functools import wraps
@@ -72,11 +74,20 @@ load_dotenv()
 # ==================== PATHS ====================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DB_PATH = os.path.join(BASE_DIR, "applications.db")
-
 BLACKLIST_PATH = os.path.join(BASE_DIR, "blacklist.txt")
 
 EXCEPTIONS_PATH = os.path.join(BASE_DIR, "exceptions.txt")
+
+# ==================== DATABASE ====================
+DB_HOST = os.getenv("MYSQL_HOST")
+DB_PORT = os.getenv("MYSQL_PORT", "3306")
+DB_USER = os.getenv("MYSQL_USER")
+DB_PASS = os.getenv("MYSQL_PASSWORD")
+DB_NAME = os.getenv("MYSQL_DATABASE")
+
+DATABASE_URL = (f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+
+engine = create_engine(DATABASE_URL,pool_size=20,max_overflow=50,pool_recycle=3600,pool_pre_ping=True,)
 
 # ==================== SECURITY ====================
 MAX_SUBMISSIONS_PER_IP = int(
@@ -214,10 +225,11 @@ _last_attempt_by_ip = {}
 
 # ===================== DB =====================
 
+Session = sessionmaker(bind=engine)
+
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
+        g.db = Session()
     return g.db
 
 
@@ -225,32 +237,32 @@ def get_db():
 def close_db(exception=None):
     db = g.pop("db", None)
     if db is not None:
+        if exception is not None:
+            db.rollback()
         db.close()
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS applications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            full_name TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            email TEXT NOT NULL,
-            study_level TEXT NOT NULL,
-            study_field TEXT NOT NULL,
-            birthday TEXT NOT NULL,
-            id_number TEXT NOT NULL,
-            interview_date TEXT NOT NULL,
-            interview_time TEXT NOT NULL,
-            ip_address TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            UNIQUE(interview_date, interview_time),
-            UNIQUE(email),
-            UNIQUE(id_number)
-        )
-    """)
-    conn.commit()
-    conn.close()
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS applications (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                full_name VARCHAR(100) NOT NULL,
+                phone VARCHAR(30) NOT NULL,
+                email VARCHAR(120) NOT NULL,
+                study_level VARCHAR(40) NOT NULL,
+                study_field VARCHAR(100) NOT NULL,
+                birthday VARCHAR(20) NOT NULL,
+                id_number VARCHAR(20) NOT NULL,
+                interview_date VARCHAR(20) NOT NULL,
+                interview_time VARCHAR(10) NOT NULL,
+                ip_address VARCHAR(64) NOT NULL,
+                created_at VARCHAR(30) NOT NULL,
+                UNIQUE KEY uq_interview_slot (interview_date, interview_time),
+                UNIQUE KEY uq_email (email),
+                UNIQUE KEY uq_id_number (id_number)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """))
 
 
 # ===================== VALIDATION HELPERS =====================
@@ -452,8 +464,8 @@ def send_interview_email(name, recipient, interview_date, interview_time):
 def get_slots():
     db = get_db()
     rows = db.execute(
-        "SELECT interview_date, interview_time FROM applications"
-    ).fetchall()
+        text("SELECT interview_date, interview_time FROM applications")
+    ).mappings().fetchall()
 
     taken = {d: [] for d in INTERVIEW_DATES}
     for row in rows:
@@ -482,14 +494,8 @@ def create_application():
     # ---- honeypot: bots fill every input, humans never see this one ----
     honeypot_value = clean_str(data.get("hp_field_9f2"))
     if honeypot_value:
-        # look successful to the bot, but don't actually store anything.
-        # Logged (not just silently dropped) so a false positive -- e.g.
-        # browser autofill catching the field again in the future -- shows
-        # up immediately in the console instead of looking like a normal
-        # successful submission with nothing in the DB.
-        print(f"[HONEYPOT TRIGGERED] ip={ip} value={honeypot_value!r} -- "
-              f"treated as bot, application NOT stored, NO email sent.")
-        return jsonify({"ok": True, "reference": "N/A"}), 201
+        return  jsonify({"ok": True, "reference": "N/A"}), 202
+
 
     # ---- rate limiting: burst throttle ----
     last = _last_attempt_by_ip.get(ip)
@@ -501,8 +507,9 @@ def create_application():
     db = get_db()
     if not is_exception(ip):
         ip_count = db.execute(
-            "SELECT COUNT(*) AS c FROM applications WHERE ip_address = ?", (ip,)
-        ).fetchone()["c"]
+            text("SELECT COUNT(*) AS c FROM applications WHERE ip_address = :ip"),
+            {"ip": ip},
+        ).mappings().fetchone()["c"]
         if ip_count >= MAX_SUBMISSIONS_PER_IP:
             add_to_blacklist(ip, reason=f"reached max of {MAX_SUBMISSIONS_PER_IP} submissions")
             return jsonify({
@@ -517,34 +524,37 @@ def create_application():
 
     # ---- duplicate person guard ----
     dup = db.execute(
-        "SELECT id FROM applications WHERE email = ? OR id_number = ?",
-        (cleaned["email"], cleaned["id_number"]),
-    ).fetchone()
+        text("SELECT id FROM applications WHERE email = :email OR id_number = :id_number"),
+        {"email": cleaned["email"], "id_number": cleaned["id_number"]},
+    ).mappings().fetchone()
     if dup:
         return jsonify({"error": "An application with this email or ID number already exists."}), 409
 
     # ---- slot booking (UNIQUE constraint is the real guarantee against races) ----
     try:
         cur = db.execute(
-            """INSERT INTO applications
+            text("""INSERT INTO applications
                (full_name, phone, email, study_level, study_field, birthday, id_number,
                 interview_date, interview_time, ip_address, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                cleaned["full_name"], cleaned["phone"], cleaned["email"],
-                cleaned["study_level"], cleaned["study_field"], cleaned["birthday"],
-                cleaned["id_number"], cleaned["interview_date"], cleaned["interview_time"],
-                ip, datetime.now(ZoneInfo("Africa/Tunis")).replace(tzinfo=None).isoformat(timespec="seconds"),
-            ),
+               VALUES (:full_name, :phone, :email, :study_level, :study_field, :birthday,
+                       :id_number, :interview_date, :interview_time, :ip_address, :created_at)"""),
+            {
+                "full_name": cleaned["full_name"], "phone": cleaned["phone"], "email": cleaned["email"],
+                "study_level": cleaned["study_level"], "study_field": cleaned["study_field"],
+                "birthday": cleaned["birthday"], "id_number": cleaned["id_number"],
+                "interview_date": cleaned["interview_date"], "interview_time": cleaned["interview_time"],
+                "ip_address": ip,
+                "created_at": datetime.now(ZoneInfo("Africa/Tunis")).replace(tzinfo=None).isoformat(timespec="seconds"),
+            },
         )
         db.commit()
 
         send_interview_email(cleaned["full_name"],cleaned["email"],cleaned["interview_date"],cleaned["interview_time"]
 )
-    except sqlite3.IntegrityError as e:
+    except IntegrityError as e:
         db.rollback()
-        msg = str(e)
-        if "interview_date" in msg or "interview_time" in msg:
+        msg = str(e.orig) if e.orig else str(e)
+        if "uq_interview_slot" in msg or "interview_slot" in msg:
             return jsonify({"error": "That interview slot was just taken. Please pick another one."}), 409
         return jsonify({"error": "An application with this email or ID number already exists."}), 409
 
@@ -555,7 +565,7 @@ def create_application():
 def delete_application(app_id):
     db = get_db()
 
-    cur = db.execute("DELETE FROM applications WHERE id = ?", (app_id,))
+    cur = db.execute(text("DELETE FROM applications WHERE id = :id"), {"id": app_id})
     db.commit()
 
     if cur.rowcount == 0:
@@ -576,39 +586,45 @@ def update_application(app_id):
     if errors:
         return jsonify({"error": "Please fix the highlighted fields.", "fields": errors}), 400
 
-    existing = db.execute("SELECT id FROM applications WHERE id = ?", (app_id,)).fetchone()
+    existing = db.execute(
+        text("SELECT id FROM applications WHERE id = :id"), {"id": app_id}
+    ).mappings().fetchone()
     if not existing:
         return jsonify({"error": "Application not found"}), 404
 
     # duplicate guard, excluding this record itself
     dup = db.execute(
-        "SELECT id FROM applications WHERE (email = ? OR id_number = ?) AND id != ?",
-        (cleaned["email"], cleaned["id_number"], app_id),
-    ).fetchone()
+        text("""SELECT id FROM applications
+                WHERE (email = :email OR id_number = :id_number) AND id != :id"""),
+        {"email": cleaned["email"], "id_number": cleaned["id_number"], "id": app_id},
+    ).mappings().fetchone()
     if dup:
         return jsonify({"error": "An application with this email or ID number already exists."}), 409
 
     try:
         db.execute(
-            """UPDATE applications SET
-                full_name = ?, phone = ?, email = ?, study_level = ?, study_field = ?,
-                birthday = ?, id_number = ?, interview_date = ?, interview_time = ?
-               WHERE id = ?""",
-            (
-                cleaned["full_name"], cleaned["phone"], cleaned["email"],
-                cleaned["study_level"], cleaned["study_field"], cleaned["birthday"],
-                cleaned["id_number"], cleaned["interview_date"], cleaned["interview_time"],
-                app_id,
-            ),
+            text("""UPDATE applications SET
+                full_name = :full_name, phone = :phone, email = :email,
+                study_level = :study_level, study_field = :study_field,
+                birthday = :birthday, id_number = :id_number,
+                interview_date = :interview_date, interview_time = :interview_time
+               WHERE id = :id"""),
+            {
+                "full_name": cleaned["full_name"], "phone": cleaned["phone"], "email": cleaned["email"],
+                "study_level": cleaned["study_level"], "study_field": cleaned["study_field"],
+                "birthday": cleaned["birthday"], "id_number": cleaned["id_number"],
+                "interview_date": cleaned["interview_date"], "interview_time": cleaned["interview_time"],
+                "id": app_id,
+            },
         )
         db.commit()
 
         send_interview_email(cleaned["full_name"],cleaned["email"],cleaned["interview_date"],cleaned["interview_time"])
 
-    except sqlite3.IntegrityError as e:
+    except IntegrityError as e:
         db.rollback()
-        msg = str(e)
-        if "interview_date" in msg or "interview_time" in msg:
+        msg = str(e.orig) if e.orig else str(e)
+        if "uq_interview_slot" in msg or "interview_slot" in msg:
             return jsonify({"error": "That interview slot is already taken. Please pick another one."}), 409
         return jsonify({"error": "An application with this email or ID number already exists."}), 409
 
@@ -626,8 +642,8 @@ def _load_admin_page_template():
 
 def _fetch_all_applications(db):
     return db.execute(
-        "SELECT * FROM applications ORDER BY interview_date, interview_time"
-    ).fetchall()
+        text("SELECT * FROM applications ORDER BY interview_date, interview_time")
+    ).mappings().fetchall()
 
 
 @app.route("/admin/applications")
@@ -645,7 +661,8 @@ def admin_applications():
         f"<td>{a['email']}</td><td>{a['study_level']}</td><td>{a['study_field']}</td>"
         f"<td>{a['birthday']}</td><td>{a['id_number']}</td>"
         f"<td>{a['interview_date']} {a['interview_time']}</td>"
-        f"<td class=\"ip-cell\" title=\"${{a.ip_address}}\">${{a.ip_address}}</td>"
+        f"<td class=\"ip-cell\" title=\"{a['ip_address']}\">{a['ip_address']}</td>"
+        f"<td>{a['created_at']}</td>"
         f"</tr>"
         for a in apps
     )
@@ -661,9 +678,8 @@ def admin_applications():
 def admin_applications_meta():
     db = get_db()
     row = db.execute(
-        "SELECT COUNT(*) AS count, COALESCE(MAX(id), 0) AS last_id "
-        "FROM excomapplications"
-    ).fetchone()
+        text("SELECT COUNT(*) AS count, COALESCE(MAX(id), 0) AS last_id FROM applications")
+    ).mappings().fetchone()
     return jsonify({"count": row["count"], "last_id": row["last_id"]})
 
 
@@ -796,7 +812,7 @@ def clear_traffic():
 if __name__ == "__main__":
     init_db()
     port = int(os.environ.get("PORT1"))
-    print(f" * Applications DB: {DB_PATH}")
+    print(f" * Applications DB: mysql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
     print(f" * Recruitment page: http://127.0.0.1:{port}/recruitment.html")
     print(f" * Admin panel:      http://127.0.0.1:{port}/admin/applications")
     app.run(host="127.0.0.1", port=port, debug=False)
