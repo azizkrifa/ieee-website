@@ -397,6 +397,47 @@
             position: relative;
             z-index: 100;
         }
+
+        .ip-cell {
+            cursor: pointer;
+            text-decoration: underline dotted rgba(125, 148, 168, 0.6);
+            text-underline-offset: 3px;
+        }
+
+        .ip-cell:hover {
+            color: #60B8EE;
+            text-decoration-color: #60B8EE;
+        }
+
+        .device-info-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .device-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            font-size: 13px;
+            border-bottom: 1px solid #1c232e;
+            padding-bottom: 8px;
+        }
+
+        .device-info-label {
+            color: #7D94A8;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .device-info-value {
+            color: #E6EDF3;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 12px;
+            word-break: break-all;
+            text-align: right;
+        }
     </style>
 </head>
 
@@ -486,6 +527,29 @@
             <div class="modal-actions">
                 <button class="toolbar-btn active" onclick="closeEditModal()">Cancel</button>
                 <button id="saveEditBtn" class="toolbar-btn active" onclick="saveEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deviceModal" class="modal-overlay">
+        <div class="modal" style="width:340px;">
+            <h2>Device Info</h2>
+            <div class="device-info-grid">
+                <div class="device-info-row"><span class="device-info-label">IP</span><span
+                        class="device-info-value" id="device-ip"></span></div>
+                <div class="device-info-row"><span class="device-info-label">Device ID</span><span
+                        class="device-info-value" id="device-deviceid"></span></div>
+                <div class="device-info-row"><span class="device-info-label">Browser</span><span
+                        class="device-info-value" id="device-browser"></span></div>
+                <div class="device-info-row"><span class="device-info-label">OS</span><span
+                        class="device-info-value" id="device-os"></span></div>
+                <div class="device-info-row"><span class="device-info-label">Language</span><span
+                        class="device-info-value" id="device-language"></span></div>
+                <div class="device-info-row" style="border-bottom:none;"><span class="device-info-label">Timezone</span><span
+                        class="device-info-value" id="device-timezone"></span></div>
+            </div>
+            <div class="modal-actions">
+                <button class="toolbar-btn active" onclick="closeDeviceModal()">Close</button>
             </div>
         </div>
     </div>
@@ -629,6 +693,29 @@
             }
 
             location.reload();
+        }
+
+        // ---------- device info popup ----------
+
+        function escapeAttr(str) {
+            return String(str ?? "").replace(/[&<>"']/g, c => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            }[c]));
+        }
+
+        function openDeviceModal(cell) {
+            const row = cell.closest("tr");
+            document.getElementById("device-ip").textContent = row.dataset.ip || "—";
+            document.getElementById("device-deviceid").textContent = row.dataset.deviceId || "—";
+            document.getElementById("device-browser").textContent = row.dataset.browser || "—";
+            document.getElementById("device-os").textContent = row.dataset.os || "—";
+            document.getElementById("device-language").textContent = row.dataset.language || "—";
+            document.getElementById("device-timezone").textContent = row.dataset.timezone || "—";
+            document.getElementById("deviceModal").classList.add("open");
+        }
+
+        function closeDeviceModal() {
+            document.getElementById("deviceModal").classList.remove("open");
         }
 
         // ---------- edit modal ----------
@@ -1004,7 +1091,10 @@
                 `IEEE FSM — Applications (${data.length})`;
 
             tbody.innerHTML = data.map(a => `
-        <tr data-id="${a.id}" data-birthday="${a.birthday}" data-interview="${a.interview_date} ${a.interview_time}" data-submitted="${a.created_at}" onclick="handleRowClick(event, '${a.id}')">
+        <tr data-id="${a.id}" data-birthday="${a.birthday}" data-interview="${a.interview_date} ${a.interview_time}" data-submitted="${a.created_at}"
+            data-ip="${escapeAttr(a.ip_address)}" data-device-id="${escapeAttr(a.device_id)}" data-browser="${escapeAttr(a.browser)}"
+            data-os="${escapeAttr(a.os)}" data-language="${escapeAttr(a.language)}" data-timezone="${escapeAttr(a.timezone)}"
+            onclick="handleRowClick(event, '${a.id}')">
             <td title="${a.id}">${a.id}</td>
             <td title="${a.full_name}">${a.full_name}</td>
             <td title="${a.phone}">${a.phone}</td>
@@ -1014,7 +1104,7 @@
             <td title="${a.birthday}">${a.birthday}</td>
             <td title="${a.id_number}">${a.id_number}</td>
             <td title="${a.interview_date} ${a.interview_time}">${a.interview_date} ${a.interview_time}</td>
-            <td title="${a.ip_address}">${a.ip_address}</td>
+            <td class="ip-cell" title="Double-click for device info" ondblclick="event.stopPropagation(); openDeviceModal(this)">${a.ip_address}</td>
             <td title="${a.created_at}">${a.created_at}</td>
         </tr>
     `).join("");

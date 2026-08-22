@@ -49,6 +49,7 @@ Configuration (optional environment variables):
 
 from collections import deque
 import csv
+import html
 import io
 import logging
 import os
@@ -257,12 +258,49 @@ def init_db():
                 interview_date VARCHAR(20) NOT NULL,
                 interview_time VARCHAR(10) NOT NULL,
                 ip_address VARCHAR(64) NOT NULL,
+                device_id VARCHAR(100) NOT NULL DEFAULT '',
+                browser VARCHAR(60) NOT NULL DEFAULT '',
+                os VARCHAR(60) NOT NULL DEFAULT '',
+                language VARCHAR(20) NOT NULL DEFAULT '',
+                timezone VARCHAR(60) NOT NULL DEFAULT '',
+                user_agent VARCHAR(255) NOT NULL DEFAULT '',
                 created_at VARCHAR(30) NOT NULL,
                 UNIQUE KEY uq_interview_slot (interview_date, interview_time),
                 UNIQUE KEY uq_email (email),
                 UNIQUE KEY uq_id_number (id_number)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """))
+    _migrate_device_columns()
+
+
+# One-time migration for tables created before device-info tracking existed
+# (e.g. your existing MySQL table from the SQLite migration). Safe to run on
+# every startup -- it only ALTERs columns that are actually missing.
+_DEVICE_COLUMNS = [
+    ("device_id", "VARCHAR(100) NOT NULL DEFAULT ''"),
+    ("browser", "VARCHAR(60) NOT NULL DEFAULT ''"),
+    ("os", "VARCHAR(60) NOT NULL DEFAULT ''"),
+    ("language", "VARCHAR(20) NOT NULL DEFAULT ''"),
+    ("timezone", "VARCHAR(60) NOT NULL DEFAULT ''"),
+    ("user_agent", "VARCHAR(255) NOT NULL DEFAULT ''"),
+]
+
+
+def _migrate_device_columns():
+    with engine.begin() as conn:
+        existing = {
+            row[0]
+            for row in conn.execute(
+                text("""SELECT COLUMN_NAME FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = 'applications'"""),
+                {"schema": DB_NAME},
+            ).fetchall()
+        }
+        after = "ip_address"
+        for name, ddl in _DEVICE_COLUMNS:
+            if name not in existing:
+                conn.execute(text(f"ALTER TABLE applications ADD COLUMN {name} {ddl} AFTER {after}"))
+            after = name
 
 
 # ===================== VALIDATION HELPERS =====================
@@ -329,6 +367,35 @@ def validate_payload(data):
         "interview_time": interview_time,
     }
     return errors, cleaned
+
+
+DEVICE_FIELD_MAX = {
+    "device_id": 100,
+    "browser": 60,
+    "os": 60,
+    "language": 20,
+    "timezone": 60,
+    "user_agent": 255,
+}
+
+
+def extract_device_info(data):
+    """Pulls the client-reported deviceInfo object out of the payload and
+    cleans/caps each field. This is self-reported by the browser (like the
+    IP's forwarded-for header), so it's a convenience signal for the admin
+    dashboard, not a hard security identifier -- it can be spoofed by anyone
+    calling the API directly."""
+    info = data.get("deviceInfo")
+    if not isinstance(info, dict):
+        info = {}
+    return {
+        "device_id": clean_str(info.get("deviceId"), DEVICE_FIELD_MAX["device_id"]),
+        "browser": clean_str(info.get("browser"), DEVICE_FIELD_MAX["browser"]),
+        "os": clean_str(info.get("os"), DEVICE_FIELD_MAX["os"]),
+        "language": clean_str(info.get("language"), DEVICE_FIELD_MAX["language"]),
+        "timezone": clean_str(info.get("timezone"), DEVICE_FIELD_MAX["timezone"]),
+        "user_agent": clean_str(info.get("userAgent"), DEVICE_FIELD_MAX["user_agent"]),
+    }
 
 
 def client_ip():
@@ -522,6 +589,8 @@ def create_application():
     if errors:
         return jsonify({"error": "Please fix the highlighted fields.", "fields": errors}), 400
 
+    device = extract_device_info(data)
+
     # ---- duplicate person guard ----
     dup = db.execute(
         text("SELECT id FROM applications WHERE email = :email OR id_number = :id_number"),
@@ -535,15 +604,19 @@ def create_application():
         cur = db.execute(
             text("""INSERT INTO applications
                (full_name, phone, email, study_level, study_field, birthday, id_number,
-                interview_date, interview_time, ip_address, created_at)
+                interview_date, interview_time, ip_address,
+                device_id, browser, os, language, timezone, user_agent, created_at)
                VALUES (:full_name, :phone, :email, :study_level, :study_field, :birthday,
-                       :id_number, :interview_date, :interview_time, :ip_address, :created_at)"""),
+                       :id_number, :interview_date, :interview_time, :ip_address,
+                       :device_id, :browser, :os, :language, :timezone, :user_agent, :created_at)"""),
             {
                 "full_name": cleaned["full_name"], "phone": cleaned["phone"], "email": cleaned["email"],
                 "study_level": cleaned["study_level"], "study_field": cleaned["study_field"],
                 "birthday": cleaned["birthday"], "id_number": cleaned["id_number"],
                 "interview_date": cleaned["interview_date"], "interview_time": cleaned["interview_time"],
                 "ip_address": ip,
+                "device_id": device["device_id"], "browser": device["browser"], "os": device["os"],
+                "language": device["language"], "timezone": device["timezone"], "user_agent": device["user_agent"],
                 "created_at": datetime.now(ZoneInfo("Africa/Tunis")).replace(tzinfo=None).isoformat(timespec="seconds"),
             },
         )
@@ -656,12 +729,19 @@ def admin_applications():
         f"data-birthday=\"{a['birthday']}\" "
         f"data-interview=\"{a['interview_date']} {a['interview_time']}\" "
         f"data-submitted=\"{a['created_at']}\" "
+        f"data-ip=\"{html.escape(a['ip_address'])}\" "
+        f"data-device-id=\"{html.escape(a['device_id'])}\" "
+        f"data-browser=\"{html.escape(a['browser'])}\" "
+        f"data-os=\"{html.escape(a['os'])}\" "
+        f"data-language=\"{html.escape(a['language'])}\" "
+        f"data-timezone=\"{html.escape(a['timezone'])}\" "
         f"onclick=\"handleRowClick(event, '{a['id']}')\">"
         f"<td>{a['id']}</td><td>{a['full_name']}</td><td>{a['phone']}</td>"
         f"<td>{a['email']}</td><td>{a['study_level']}</td><td>{a['study_field']}</td>"
         f"<td>{a['birthday']}</td><td>{a['id_number']}</td>"
         f"<td>{a['interview_date']} {a['interview_time']}</td>"
-        f"<td class=\"ip-cell\" title=\"{a['ip_address']}\">{a['ip_address']}</td>"
+        f"<td class=\"ip-cell\" title=\"Double-click for device info\" "
+        f"ondblclick=\"event.stopPropagation(); openDeviceModal(this)\">{a['ip_address']}</td>"
         f"<td>{a['created_at']}</td>"
         f"</tr>"
         for a in apps
@@ -702,7 +782,8 @@ def admin_applications_csv():
     writer = csv.writer(buf)
     writer.writerow(["id", "full_name", "phone", "email", "study_level", "study_field",
                       "birthday", "id_number", "interview_date", "interview_time",
-                      "ip_address", "created_at"])
+                      "ip_address", "device_id", "browser", "os", "language", "timezone",
+                      "user_agent", "created_at"])
     for a in apps:
         writer.writerow([a[k] for k in a.keys()])
     return Response(
@@ -811,7 +892,7 @@ def clear_traffic():
 
 if __name__ == "__main__":
     init_db()
-    port = int(os.environ.get("PORT1"))
+    port = 5505
     print(f" * Applications DB: mysql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
     print(f" * Recruitment page: http://127.0.0.1:{port}/recruitment.html")
     print(f" * Admin panel:      http://127.0.0.1:{port}/admin/applications")

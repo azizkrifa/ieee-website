@@ -122,7 +122,7 @@
        only by spacing — not by color.
        Cards and panels keep their own surfaces for contrast. */
 
-    footer .container{
+    footer .container {
       position: relative;
       z-index: 1;
     }
@@ -1226,8 +1226,9 @@
               <use href="#i-check" />
             </svg></div>
           <h3>Application received!</h3>
-          <p>Your application and interview slot are confirmed. Keep your reference number in case you need to
-            contact the branch about it.</p>
+          <p>Your application and interview slot are confirmed.
+            An Email has been sent to your inbox with the details.
+            Keep your reference number in case you need to contact the branch about it</p>
           <div class="confirm-summary" id="confirmSummary"></div>
           <div class="confirm-actions">
             <a href="https://ieee-fsm-website.vercel.app/" class="btn btn-primary">Back to homepage <svg class="icon">
@@ -1436,6 +1437,75 @@
       };
     })();
 
+    // ===================== DEVICE INFO (for admin dashboard) =====================
+    // Lightweight, client-reported info shown in the admin IP popup. Note this
+    // is self-reported by the browser (same trust level as the IP's
+    // forwarded-for header) -- it's a convenience signal, not a hard identifier.
+    const DeviceInfo = (function () {
+      function getDeviceId() {
+        const key = 'ieee_fsm_device_id';
+        try {
+          let id = localStorage.getItem(key);
+          if (!id) {
+            id = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+              const r = Math.random() * 16 | 0;
+              const v = c === 'x' ? r : (r & 0x3 | 0x8);
+              return v.toString(16);
+            }));
+            localStorage.setItem(key, id);
+          }
+          return id;
+        } catch (e) {
+          return 'unavailable';
+        }
+      }
+
+      function parseBrowser(ua) {
+        ua = ua || '';
+        const checks = [
+          { name: 'Edge', re: /Edg\/([\d.]+)/ },
+          { name: 'Opera', re: /OPR\/([\d.]+)/ },
+          { name: 'Chrome', re: /Chrome\/([\d.]+)/ },
+          { name: 'Firefox', re: /Firefox\/([\d.]+)/ },
+          { name: 'Safari', re: /Version\/([\d.]+).*Safari/ }
+        ];
+        for (const c of checks) {
+          const m = ua.match(c.re);
+          if (m) return `${c.name} ${m[1].split('.')[0]}`;
+        }
+        return 'Unknown';
+      }
+
+      function parseOS(ua) {
+        ua = ua || '';
+        if (/Windows NT 10/.test(ua)) return 'Windows 10/11';
+        if (/Windows NT/.test(ua)) return 'Windows';
+        if (/Mac OS X/.test(ua)) return 'macOS';
+        if (/Android/.test(ua)) return 'Android';
+        if (/iPhone|iPad|iPod/.test(ua)) return 'iOS';
+        if (/Linux/.test(ua)) return 'Linux';
+        return 'Unknown';
+      }
+
+      function collect() {
+        let timezone = '';
+        try {
+          timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        } catch (e) { /* ignore */ }
+
+        return {
+          deviceId: getDeviceId(),
+          browser: parseBrowser(navigator.userAgent),
+          os: parseOS(navigator.userAgent),
+          language: navigator.language || '',
+          timezone: timezone,
+          userAgent: navigator.userAgent || ''
+        };
+      }
+
+      return { collect };
+    })();
+
     // ===================== FORM VALIDATION + SUBMIT =====================
     (function () {
       const form = document.getElementById('applicationForm');
@@ -1533,7 +1603,8 @@
             body: JSON.stringify({
               ...data,
               interviewDate: interview.dateISO,
-              interviewTime: interview.timeStart
+              interviewTime: interview.timeStart,
+              deviceInfo: DeviceInfo.collect()
             })
           });
           const result = await res.json().catch(() => ({}));
