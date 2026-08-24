@@ -535,18 +535,19 @@
         <div class="modal" style="width:340px;">
             <h2>Device Info</h2>
             <div class="device-info-grid">
-                <div class="device-info-row"><span class="device-info-label">IP</span><span
-                        class="device-info-value" id="device-ip"></span></div>
+                <div class="device-info-row"><span class="device-info-label">IP</span><span class="device-info-value"
+                        id="device-ip"></span></div>
                 <div class="device-info-row"><span class="device-info-label">Device ID</span><span
                         class="device-info-value" id="device-deviceid"></span></div>
                 <div class="device-info-row"><span class="device-info-label">Browser</span><span
                         class="device-info-value" id="device-browser"></span></div>
-                <div class="device-info-row"><span class="device-info-label">OS</span><span
-                        class="device-info-value" id="device-os"></span></div>
+                <div class="device-info-row"><span class="device-info-label">OS</span><span class="device-info-value"
+                        id="device-os"></span></div>
                 <div class="device-info-row"><span class="device-info-label">Language</span><span
                         class="device-info-value" id="device-language"></span></div>
-                <div class="device-info-row" style="border-bottom:none;"><span class="device-info-label">Timezone</span><span
-                        class="device-info-value" id="device-timezone"></span></div>
+                <div class="device-info-row" style="border-bottom:none;"><span
+                        class="device-info-label">Timezone</span><span class="device-info-value"
+                        id="device-timezone"></span></div>
             </div>
             <div class="modal-actions">
                 <button class="toolbar-btn active" onclick="closeDeviceModal()">Close</button>
@@ -607,11 +608,30 @@
 
         function filterTable() {
             const value = searchInput.value.trim().toLowerCase();
+
             document.querySelectorAll("#applicationsBody tr").forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(value)
-                    ? ""
-                    : "none";
+                const visible = row.innerText.toLowerCase().includes(value);
+
+                row.style.display = visible ? "" : "none";
+
+                // A filtered-out row cannot remain selected
+                if (!visible) {
+                    selectedIds.delete(row.dataset.id);
+                }
             });
+
+            // Reset the shift-click anchor if it is no longer visible
+            if (
+                lastClickedId !== null &&
+                !document.querySelector(
+                    `#applicationsBody tr[data-id="${lastClickedId}"]:not([style*="display: none"])`
+                )
+            ) {
+                lastClickedId = null;
+            }
+
+            applySelectionStyles();
+            updateToolbar();
         }
 
         searchInput.addEventListener("input", filterTable);
@@ -620,7 +640,7 @@
         let lastClickedId = null;
 
         function handleRowClick(event, id) {
-            const rows = Array.from(document.querySelectorAll("#applicationsBody tr"));
+            const rows = Array.from(document.querySelectorAll("#applicationsBody tr")).filter(row => row.style.display !== "none");
             const ids = rows.map(r => r.dataset.id);
 
             if (event.shiftKey && lastClickedId !== null && ids.includes(lastClickedId)) {
@@ -682,14 +702,27 @@
         }
 
         async function deleteSelected() {
-            const ids = getSelectedIds();
+            // Only delete currently visible + selected rows
+            const ids = Array.from(selectedIds).filter(id => {
+                const row = document.querySelector(
+                    `#applicationsBody tr[data-id="${id}"]`
+                );
+
+                return row && row.style.display !== "none";
+            });
+
             if (ids.length === 0) return;
+
             if (!confirm(`Delete ${ids.length} application(s)?`)) return;
 
             for (const id of ids) {
-                await fetch("/admin/applications/" + id, {
+                const res = await fetch("/admin/applications/" + id, {
                     method: "DELETE"
                 });
+
+                if (!res.ok) {
+                    console.error(`Failed to delete application ${id}`);
+                }
             }
 
             location.reload();
